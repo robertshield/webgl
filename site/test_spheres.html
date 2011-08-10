@@ -1,0 +1,395 @@
+<!doctype html>
+<!-- paulirish.com/2008/conditional-stylesheets-vs-css-hacks-answer-neither/ -->
+<!--[if lt IE 7 ]> <html class="no-js ie6" lang="en"> <![endif]-->
+<!--[if IE 7 ]>    <html class="no-js ie7" lang="en"> <![endif]-->
+<!--[if IE 8 ]>    <html class="no-js ie8" lang="en"> <![endif]-->
+<!--[if (gte IE 9)|!(IE)]><!--> <html class="no-js" lang="en"> <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+
+  <!-- Always force latest IE rendering engine (even in intranet) & Chrome Frame
+       Remove this if you use the .htaccess -->
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+
+  <title></title>
+  <meta name="description" content="">
+  <meta name="author" content="">
+
+  <!-- Mobile viewport optimized: j.mp/bplateviewport -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Place favicon.ico & apple-touch-icon.png in the root of your domain and delete these references -->
+  <link rel="shortcut icon" href="/favicon.ico">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- CSS: implied media="all" -->
+  <link rel="stylesheet" href="css/style.css?v=2">
+
+  <!-- Uncomment if you are specifically targeting less enabled mobile browsers
+  <link rel="stylesheet" media="handheld" href="css/handheld.css?v=2">  -->
+
+  <!-- All JavaScript at the bottom, except for Modernizr which enables HTML5 elements & feature detects -->
+  <script src="js/libs/modernizr-1.7.min.js"></script>
+  
+  <style type="text/css"> 
+			body {
+				background-color: #000000;
+				margin: 0px;
+				overflow: hidden;
+			}
+			.main {
+				overflow: hidden;
+			}
+ 	</style>
+
+</head>
+<body>
+  
+  <div id="container">
+    <header>
+
+    </header>
+    <div id="main" role="main">
+
+    </div>
+    <footer>
+
+    </footer>
+  </div> <!--! end of #container -->
+  
+  <!-- JavaScript at the bottom for fast page loading -->
+
+  <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if necessary -->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.js"></script>
+  <script>window.jQuery || document.write("<script src='js/libs/jquery-1.5.1.min.js'>\x3C/script>")</script>
+  	
+
+  <script type="text/javascript" src="js/libs/ThreeDebug.js"></script>
+
+  <script type="text/javascript" src="js/libs/RequestAnimationFrame.js"></script>
+  <script type="text/javascript" src="js/libs/Stats.js"></script>
+  
+  <script type="text/javascript" src="js/fonts/helvetiker_bold.typeface.js"></script>
+	<script type="text/javascript" src="js/fonts/helvetiker_regular.typeface.js"></script>	
+
+	<!-- TODO:
+	  1) Finish the sorted range list impl. + test
+	  2) get selection glow / state
+	  3) target tracking
+	  4) animation
+	  5) ship creation.
+	
+	  -->
+
+
+  <script type="text/javascript">
+
+    var container, stats;
+    var camera, scene;
+    var textScene;
+    var projector, renderer;
+    var cameraCube, sceneCube;
+
+    var mouse = { x: 0, y: 0 }, INTERSECTED;
+
+    init();
+    animate();
+    
+    
+    Range = function(begin, end) {
+    	this.begin = begin;
+    	this.end = end;
+    }
+    
+    SortedRangeList = function() {
+    	this.ranges_ = [];
+    };
+    
+    SortedRangeList.prototype = {
+    	add : function( range ) {
+    		// Cases:
+    		//  0) this is the first range. Add it.
+    		//  1) new range ends before any existing range starts. Add to front.
+    		//  2) new ranges begins after existing range ends. Add to back.
+    		//  3) new range begins before first existing range, ends after first existing range begins
+    		if (this.ranges_.length == 0) {
+    			this.ranges_.push(range);
+    			return;
+    		}
+    		
+    		if (range.end < this.ranges_[0].begin) {
+    			this.ranges_.unshift(range);
+    			return;
+    		}
+    		
+    		for (var i = 0; i < this.ranges_.length; i++) {
+    			var range = this.ranges_[i];
+    			
+					    			
+    		}
+    	}
+    	
+    };
+    
+    
+    
+    function buildWorlds(radius, count, xRange, yRange, zRange) {
+      
+      var x_ranges = [];     
+      var worlds = [];
+      
+      for (var i = 0; i < count; i++) {
+      	
+      	
+      }
+      
+    }
+
+    function init() {
+      
+      var info = document.createElement( 'div' );
+      info.style.position = 'absolute';
+      info.style.top = '10px';
+      info.style.width = '100%';
+      info.style.textAlign = 'center';      
+      info.innerHTML = '<a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> webgl - test';
+      $("#main")[0].appendChild( info );
+
+      camera = new THREE.Camera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
+      //camera = new THREE.Camera( 90, 1, 1, 10000 );
+      //camera = new THREE.FlyCamera({
+      //camera = new THREE.QuakeCamera({
+/*
+				fov: 25,
+				aspect: window.innerWidth / window.innerHeight,
+				movementSpeed: 1000,
+				domElement: container,
+				rollSpeed: Math.PI / 24,
+				autoForward: false,
+				dragToLook: false,
+				near: 50,
+				far: 1e7
+	
+	        });
+*/	        
+      camera.position.z = 900;
+
+      cameraCube = new THREE.Camera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
+      sceneCube = new THREE.Scene();
+
+      scene = new THREE.Scene();
+      textScene = new THREE.Scene();
+
+      var light = new THREE.DirectionalLight( 0xffffff, 2 );
+      light.position.x = 1;
+      light.position.y = 1;
+      light.position.z = 1;
+      light.position.normalize();
+      scene.addLight( light );
+
+      var light = new THREE.DirectionalLight( 0xffffff );
+      light.position.x = - 1;
+      light.position.y = - 1;
+      light.position.z = - 1;
+      light.position.normalize();
+      scene.addLight( light );
+
+      var light = new THREE.AmbientLight( 0x000011 );      
+      scene.addLight( light );
+
+      var geometry = new THREE.SphereGeometry( 20, 20, 20 );
+
+      for ( var i = 0; i < 50; i ++ ) {
+				var x = Math.random() * 800 - 400;
+				var y = Math.random() * 800 - 400;
+				var z = 0;
+
+				var radsToDegrees = 360 / (2 * Math.PI);
+
+        var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x777777 } ) );
+        object.position.x = x;
+        object.position.y = y;
+        
+        
+        object.rotation.x = - Math.atan( (camera.position.y - y) / (camera.position.z - z) );
+        object.rotation.y = Math.atan( (camera.position.x - x) / (camera.position.z - z) );
+        object.rotation.z = 0;
+        
+        object.position.z = z; //Math.random() * 100 - 50;
+        //object.scale.x = Math.random() * 2 + 1;
+        //object.scale.y = Math.random() * 2 + 1;
+        //object.scale.z = Math.random() * 2 + 1;
+        
+        var textGeometry = new THREE.TextGeometry( '100', { size: 12, height: 1, curveSegments: 24 } );               
+        var text = new THREE.Mesh( textGeometry, new THREE.MeshLambertMaterial( { color: 0xffffff } ) );
+        text.position.x = 0;
+        text.position.y = 0;
+        text.position.z = 24;
+        
+        
+        object.addChild( text );
+        scene.addObject( object );
+        //scene.addObject( text );       
+      }
+      
+      // Create the intersection scene before the skybox is added. We don't want to hit-test against the skybox.
+      intersection_scene = scene;
+      
+      // Skybox
+      var path = "img/skybox/";
+      var format = '.jpg';
+      var urls = [
+        path + 'px' + format, path + 'nx' + format,
+        path + 'py' + format, path + 'ny' + format,
+        path + 'pz' + format, path + 'nz' + format
+      ];
+
+      var textureCube = THREE.ImageUtils.loadTextureCube( urls );
+      var material = new THREE.MeshBasicMaterial( { color: 0xffffff, envMap: textureCube } );
+      var shader = THREE.ShaderUtils.lib["cube"];
+      shader.uniforms["tCube"].texture = textureCube;
+
+      var material = new THREE.MeshShaderMaterial( {
+
+        fragmentShader: shader.fragmentShader,
+        vertexShader: shader.vertexShader,
+        uniforms: shader.uniforms
+
+      } );
+
+      var skybox = new THREE.Mesh( new THREE.CubeGeometry( 100000, 100000, 100000, 1, 1, 1, null, true ), material );
+      skybox.name = 'skybox';
+
+      sceneCube.addObject( skybox );
+
+      projector = new THREE.Projector();
+
+      renderer = new THREE.WebGLRenderer();
+      renderer.sortObjects = false;
+      renderer.autoClear = false;
+      renderer.setSize( window.innerWidth, window.innerHeight - 25 );
+      renderer.domElement.style.position = 'absolute';
+      renderer.domElement.style.top = '25px';
+      renderer.domElement.style.width = '100%';
+
+      $("#main")[0].appendChild(renderer.domElement);
+
+      stats = new Stats();
+      stats.domElement.style.position = 'absolute';
+      stats.domElement.style.top = '0px';
+      $("#main")[0].appendChild( stats.domElement );
+
+      document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+
+    }
+
+    function onDocumentMouseMove( event ) {
+
+      event.preventDefault();
+
+      mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+      mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+    }
+
+    //
+
+    function animate() {
+
+      requestAnimationFrame( animate );
+
+      render();
+      stats.update();
+
+    }
+
+    var radius = 600;
+    var theta = 0;
+
+    function render() {
+
+      theta += 0.2;
+      //camera.position.x = radius * Math.sin( theta * Math.PI / 360 );
+      //camera.position.y = radius * Math.sin( theta * Math.PI / 360 );
+      //camera.position.z = radius * Math.cos( theta * Math.PI / 360 );
+
+      //cameraCube.target.position.x = - camera.position.x;
+      //cameraCube.target.position.y = - camera.position.y;
+      //cameraCube.target.position.z = - camera.position.z;
+      //cameraCube.update();
+
+      // find intersections
+
+      camera.update();
+      
+      
+      
+			for ( i = 0, l = scene.objects.length; i < l; i ++ ) {
+	
+				var obj = scene.objects[i];
+				obj.rotation.x = - Math.atan( (camera.position.y - obj.position.y) / (camera.position.z - obj.position.z) );
+        obj.rotation.y = Math.atan( (camera.position.x - obj.position.x) / (camera.position.z - obj.position.z) );		
+			}
+
+      
+			/*
+      var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 );
+      projector.unprojectVector( vector, camera );
+
+      var ray = new THREE.Ray( camera.position, vector.subSelf( camera.position ).normalize() );
+      var intersects = ray.intersectScene( intersection_scene );
+
+      if ( intersects.length > 0 ) {
+
+        if ( INTERSECTED != intersects[ 0 ].object ) {
+
+          if ( INTERSECTED ) INTERSECTED.materials[ 0 ].color.setHex( INTERSECTED.currentHex );
+
+          INTERSECTED = intersects[ 0 ].object;
+          INTERSECTED.currentHex = INTERSECTED.materials[ 0 ].color.hex;
+          INTERSECTED.materials[ 0 ].color.setHex( 0xff0000 );
+          
+          camera.target.position.x = INTERSECTED.position.x;
+          camera.target.position.y = INTERSECTED.position.y;
+          camera.target.position.z = INTERSECTED.position.z;
+
+        }
+
+      } else {
+
+        if ( INTERSECTED ) INTERSECTED.materials[ 0 ].color.setHex( INTERSECTED.currentHex );
+
+        INTERSECTED = null;
+
+      }
+      */
+
+      renderer.clear();
+      renderer.render( sceneCube, cameraCube );
+      renderer.render( scene, camera );
+
+    }
+
+  </script>
+
+  <!-- scripts concatenated and minified via ant build script-->
+  <script src="js/plugins.js"></script>
+  <script src="js/script.js"></script>
+  <!-- end scripts-->
+
+
+  <!--[if lt IE 7 ]>
+    <script src="js/libs/dd_belatedpng.js"></script>
+    <script>DD_belatedPNG.fix("img, .png_bg"); // Fix any <img> or .png_bg bg-images. Also, please read goo.gl/mZiyb </script>
+  <![endif]-->
+
+  <!-- mathiasbynens.be/notes/async-analytics-snippet Change UA-XXXXX-X to be your site's ID -->
+  <script>
+    var _gaq=[["_setAccount","UA-24911228-1"],["_trackPageview"]];
+    (function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];g.async=1;
+    g.src=("https:"==location.protocol?"//ssl":"//www")+".google-analytics.com/ga.js";
+    s.parentNode.insertBefore(g,s)}(document,"script"));
+  </script>
+
+</body>
+</html>
