@@ -32,15 +32,15 @@
   <script src="js/libs/modernizr-1.7.min.js"></script>
   
   <style type="text/css"> 
-			body {
-				background-color: #000000;
-				margin: 0px;
-				overflow: hidden;
-			}
-			.main {
-				overflow: hidden;
-			}
- 	</style>
+      body {
+        background-color: #000000;
+        margin: 0px;
+        overflow: hidden;
+      }
+      .main {
+        overflow: hidden;
+      }
+   </style>
 
 </head>
 <body>
@@ -62,7 +62,7 @@
   <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if necessary -->
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.js"></script>
   <script>window.jQuery || document.write("<script src='js/libs/jquery-1.5.1.min.js'>\x3C/script>")</script>
-  	
+    
 
   <script type="text/javascript" src="js/libs/ThreeDebug.js"></script>
 
@@ -70,16 +70,16 @@
   <script type="text/javascript" src="js/libs/Stats.js"></script>
   
   <script type="text/javascript" src="js/fonts/helvetiker_bold.typeface.js"></script>
-	<script type="text/javascript" src="js/fonts/helvetiker_regular.typeface.js"></script>	
+  <script type="text/javascript" src="js/fonts/helvetiker_regular.typeface.js"></script>  
 
-	<!-- TODO:
-	  1) Finish the sorted range list impl. + test
-	  2) get selection glow / state
-	  3) target tracking
-	  4) animation
-	  5) ship creation.
-	
-	  -->
+  <!-- TODO:
+    X - 1) Finish the sorted range list impl. + test.
+    2) get selection glow / state
+    3) target tracking
+    4) animation
+    5) ship creation.
+  
+    -->
 
 
   <script type="text/javascript">
@@ -88,7 +88,7 @@
     var camera, scene;
     var textScene;
     var projector, renderer;
-    var cameraCube, sceneCube;
+    var cameraCube, skyboxScene;
 
     var mouse = { x: 0, y: 0 }, INTERSECTED;
 
@@ -96,63 +96,63 @@
     animate();
     
     
-    Range = function(begin, end) {
-    	this.begin = begin;
-    	this.end = end;
-    }
-    
-    SortedRangeList = function() {
-    	this.ranges_ = [];
-    };
-    
-    SortedRangeList.prototype = {
-    	add : function( range ) {
-    		// Cases:
-    		//  0) this is the first range. Add it.
-    		//  1) new range ends before any existing range starts. Add to front.
-    		//  2) new ranges begins after existing range ends. Add to back.
-    		//  3) new range begins before first existing range, ends after first existing range begins
-    		if (this.ranges_.length == 0) {
-    			this.ranges_.push(range);
-    			return;
-    		}
-    		
-    		if (range.end < this.ranges_[0].begin) {
-    			this.ranges_.unshift(range);
-    			return;
-    		}
-    		
-    		for (var i = 0; i < this.ranges_.length; i++) {
-    			var range = this.ranges_[i];
-    			
-					    			
-    		}
-    	}
-    	
-    };
-    
-    
-    
-    function buildWorlds(radius, count, xRange, yRange, zRange) {
+   
+    // Constructs a random set of spheres in a box. In a lousy kinda way.
+    // Will eventually terminate if the ranges are sufficiently large to hold
+    // count objects of radius size ;)
+    function generateWorlds(radius, count, xMin, xMax, yMin, yMax) {
+      var centers = [];
+      var minDist = (radius * 2) + 10;
+      var minDistSquared = Math.pow(minDist, 2);
       
-      var x_ranges = [];     
-      var worlds = [];
-      
+      var xRange = xMax - xMin;
+      var yRange = yMax - yMin;
+
       for (var i = 0; i < count; i++) {
-      	
-      	
+        var x = Math.random() * xRange;
+        var y = Math.random() * yRange;
+
+        var collided = false;
+        for (var w = centers.length - 1; w >= 0; w--) {
+          // Fast detect non-colliders:
+          if (Math.abs(x - centers[w].x) > minDist ||
+              Math.abs(y - centers[w].y) > minDist)
+            continue;
+
+          var distSquared = Math.pow((x - centers[w].x), 2) +
+                            Math.pow((y - centers[w].y), 2);
+          if (distSquared < minDistSquared) {
+            collided = true;
+            break;
+          }
+        }
+
+        if (collided) {
+          i--;
+          continue;
+        } else {
+          centers.push(new THREE.Vector3(x, y, 0));
+        }
       }
-      
+
+     // Fix up the coordinates (to save the extra add in the loop above).
+     var xRangeOverTwo = xRange / 2;
+     var yRangeOverTwo = yRange / 2;
+     for (var c = centers.length - 1; c >= 0; c--) {
+       centers[c].x -= xRangeOverTwo;
+       centers[c].y -= yRangeOverTwo;
+     }
+
+      return centers;
     }
 
     function init() {
-      
       var info = document.createElement( 'div' );
       info.style.position = 'absolute';
       info.style.top = '10px';
       info.style.width = '100%';
-      info.style.textAlign = 'center';      
-      info.innerHTML = '<a href="http://github.com/mrdoob/three.js" target="_blank">three.js</a> webgl - test';
+      info.style.textAlign = 'center';
+      info.innerHTML = 'webgl - test';
       $("#main")[0].appendChild( info );
 
       camera = new THREE.Camera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
@@ -160,25 +160,25 @@
       //camera = new THREE.FlyCamera({
       //camera = new THREE.QuakeCamera({
 /*
-				fov: 25,
-				aspect: window.innerWidth / window.innerHeight,
-				movementSpeed: 1000,
-				domElement: container,
-				rollSpeed: Math.PI / 24,
-				autoForward: false,
-				dragToLook: false,
-				near: 50,
-				far: 1e7
-	
-	        });
-*/	        
+        fov: 25,
+        aspect: window.innerWidth / window.innerHeight,
+        movementSpeed: 1000,
+        domElement: container,
+        rollSpeed: Math.PI / 24,
+        autoForward: false,
+        dragToLook: false,
+        near: 50,
+        far: 1e7
+  
+          });
+*/          
       camera.position.z = 900;
 
       cameraCube = new THREE.Camera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
-      sceneCube = new THREE.Scene();
+      skyboxScene = new THREE.Scene();
 
       scene = new THREE.Scene();
-      textScene = new THREE.Scene();
+      overlayScene = new THREE.Scene();
 
       var light = new THREE.DirectionalLight( 0xffffff, 2 );
       light.position.x = 1;
@@ -194,42 +194,38 @@
       light.position.normalize();
       scene.addLight( light );
 
-      var light = new THREE.AmbientLight( 0x000011 );      
       scene.addLight( light );
 
       var geometry = new THREE.SphereGeometry( 20, 20, 20 );
 
-      for ( var i = 0; i < 50; i ++ ) {
-				var x = Math.random() * 800 - 400;
-				var y = Math.random() * 800 - 400;
-				var z = 0;
+      var worlds = generateWorlds(20, 75, -400, 400, -400, 400, 0, 0);
 
-				var radsToDegrees = 360 / (2 * Math.PI);
-
+      for (var i = worlds.length - 1; i >= 0; i--) {
         var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x777777 } ) );
-        object.position.x = x;
-        object.position.y = y;
+        object.position.x = worlds[i].x;
+        object.position.y = worlds[i].y;
+        object.position.z = worlds[i].z;
         
-        
-        object.rotation.x = - Math.atan( (camera.position.y - y) / (camera.position.z - z) );
-        object.rotation.y = Math.atan( (camera.position.x - x) / (camera.position.z - z) );
+        /*
+        object.rotation.x = - Math.atan( (camera.position.y - worlds[i].y) / (camera.position.z - worlds[i].z) );
+        object.rotation.y = Math.atan( (camera.position.x - worlds[i].x) / (camera.position.z - worlds[i].z) );
         object.rotation.z = 0;
+        */
         
-        object.position.z = z; //Math.random() * 100 - 50;
-        //object.scale.x = Math.random() * 2 + 1;
-        //object.scale.y = Math.random() * 2 + 1;
-        //object.scale.z = Math.random() * 2 + 1;
-        
-        var textGeometry = new THREE.TextGeometry( '100', { size: 12, height: 1, curveSegments: 24 } );               
+        var textGeometry = new THREE.TextGeometry( '100', { size: 12, height: 1, curveSegments: 24 } );
         var text = new THREE.Mesh( textGeometry, new THREE.MeshLambertMaterial( { color: 0xffffff } ) );
-        text.position.x = 0;
-        text.position.y = 0;
-        text.position.z = 24;
+        text.position.x = worlds[i].x;
+        text.position.y = worlds[i].y;
+        text.position.z = worlds[i].z + 24;
+        //text.rotation.x = - Math.atan( (camera.position.y - text.position.y) / (camera.position.z - worlds[i].z) );
+        //text.rotation.y = Math.atan( (camera.position.x - text.position.x) / (camera.position.z - worlds[i].z) );
+        //text.rotation.z = 0;
         
         
-        object.addChild( text );
+        
+        //object.addChild( text );
         scene.addObject( object );
-        //scene.addObject( text );       
+        overlayScene.addObject(text);
       }
       
       // Create the intersection scene before the skybox is added. We don't want to hit-test against the skybox.
@@ -260,7 +256,7 @@
       var skybox = new THREE.Mesh( new THREE.CubeGeometry( 100000, 100000, 100000, 1, 1, 1, null, true ), material );
       skybox.name = 'skybox';
 
-      sceneCube.addObject( skybox );
+      skyboxScene.addObject( skybox );
 
       projector = new THREE.Projector();
 
@@ -324,15 +320,15 @@
       
       
       
-			for ( i = 0, l = scene.objects.length; i < l; i ++ ) {
-	
-				var obj = scene.objects[i];
-				obj.rotation.x = - Math.atan( (camera.position.y - obj.position.y) / (camera.position.z - obj.position.z) );
-        obj.rotation.y = Math.atan( (camera.position.x - obj.position.x) / (camera.position.z - obj.position.z) );		
-			}
+      for ( i = 0, l = scene.objects.length; i < l; i ++ ) {
+  
+        var obj = scene.objects[i];
+        obj.rotation.x = - Math.atan( (camera.position.y - obj.position.y) / (camera.position.z - obj.position.z) );
+        obj.rotation.y = Math.atan( (camera.position.x - obj.position.x) / (camera.position.z - obj.position.z) );    
+      }
 
       
-			/*
+      
       var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 );
       projector.unprojectVector( vector, camera );
 
@@ -348,11 +344,6 @@
           INTERSECTED = intersects[ 0 ].object;
           INTERSECTED.currentHex = INTERSECTED.materials[ 0 ].color.hex;
           INTERSECTED.materials[ 0 ].color.setHex( 0xff0000 );
-          
-          camera.target.position.x = INTERSECTED.position.x;
-          camera.target.position.y = INTERSECTED.position.y;
-          camera.target.position.z = INTERSECTED.position.z;
-
         }
 
       } else {
@@ -362,11 +353,11 @@
         INTERSECTED = null;
 
       }
-      */
 
       renderer.clear();
-      renderer.render( sceneCube, cameraCube );
+      renderer.render( skyboxScene, cameraCube );
       renderer.render( scene, camera );
+      renderer.render( overlayScene, camera );
 
     }
 
