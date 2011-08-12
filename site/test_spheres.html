@@ -70,7 +70,7 @@
   <script type="text/javascript" src="js/libs/Stats.js"></script>
   
   <script type="text/javascript" src="js/fonts/helvetiker_bold.typeface.js"></script>
-  <script type="text/javascript" src="js/fonts/helvetiker_regular.typeface.js"></script>  
+  <script type="text/javascript" src="js/fonts/helvetiker_regular.typeface.js"></script>
 
   <!-- TODO:
     X - 1) Finish the sorted range list impl. + test.
@@ -78,9 +78,11 @@
     3) target tracking
     4) animation
     5) ship creation.
+    6) Refactor this to not suck horribly.
   
     -->
 
+  <script type="text/javascript" src="js/worlds.js"></script>
 
   <script type="text/javascript">
 
@@ -88,63 +90,20 @@
     var camera, scene;
     var textScene;
     var projector, renderer;
-    var cameraCube, skyboxScene;
+    var skyboxCamera, skyboxScene;
 
-    var mouse = { x: 0, y: 0 }, INTERSECTED;
+    var mouse = { x: 0, y: 0 };
+    var IntersectingWorld;
+    
+    // TODO: Make this a range instead.
+    var WORLD_RADIUS = 20;
+
+    var WORLD_COUNT = 75;
+
+    var gameState = new Game.State();
 
     init();
     animate();
-    
-    
-   
-    // Constructs a random set of spheres in a box. In a lousy kinda way.
-    // Will eventually terminate if the ranges are sufficiently large to hold
-    // count objects of radius size ;)
-    function generateWorlds(radius, count, xMin, xMax, yMin, yMax) {
-      var centers = [];
-      var minDist = (radius * 2) + 10;
-      var minDistSquared = Math.pow(minDist, 2);
-      
-      var xRange = xMax - xMin;
-      var yRange = yMax - yMin;
-
-      for (var i = 0; i < count; i++) {
-        var x = Math.random() * xRange;
-        var y = Math.random() * yRange;
-
-        var collided = false;
-        for (var w = centers.length - 1; w >= 0; w--) {
-          // Fast detect non-colliders:
-          if (Math.abs(x - centers[w].x) > minDist ||
-              Math.abs(y - centers[w].y) > minDist)
-            continue;
-
-          var distSquared = Math.pow((x - centers[w].x), 2) +
-                            Math.pow((y - centers[w].y), 2);
-          if (distSquared < minDistSquared) {
-            collided = true;
-            break;
-          }
-        }
-
-        if (collided) {
-          i--;
-          continue;
-        } else {
-          centers.push(new THREE.Vector3(x, y, 0));
-        }
-      }
-
-     // Fix up the coordinates (to save the extra add in the loop above).
-     var xRangeOverTwo = xRange / 2;
-     var yRangeOverTwo = yRange / 2;
-     for (var c = centers.length - 1; c >= 0; c--) {
-       centers[c].x -= xRangeOverTwo;
-       centers[c].y -= yRangeOverTwo;
-     }
-
-      return centers;
-    }
 
     function init() {
       var info = document.createElement( 'div' );
@@ -168,13 +127,15 @@
         autoForward: false,
         dragToLook: false,
         near: 50,
-        far: 1e7
-  
+        far: 1e7,
+        lookVertical: false,
           });
-*/          
+*/
+      //camera.position.x = 0;
+      //camera.position.y = 0;
       camera.position.z = 900;
 
-      cameraCube = new THREE.Camera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
+      skyboxCamera = new THREE.Camera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
       skyboxScene = new THREE.Scene();
 
       scene = new THREE.Scene();
@@ -196,36 +157,38 @@
 
       scene.addLight( light );
 
-      var geometry = new THREE.SphereGeometry( 20, 20, 20 );
+      var geometry = new THREE.SphereGeometry(WORLD_RADIUS, 20, 20);
+      var textGeometry = new THREE.TextGeometry( '100', { size: 12, height: 1, curveSegments: 24 } );
 
-      var worlds = generateWorlds(20, 75, -400, 400, -400, 400, 0, 0);
+      var worlds = gameState.generateWorldPositions(WORLD_RADIUS, WORLD_COUNT, -400, 400, -400, 400, 0, 0);
 
       for (var i = worlds.length - 1; i >= 0; i--) {
-        var object = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x777777 } ) );
-        object.position.x = worlds[i].x;
-        object.position.y = worlds[i].y;
-        object.position.z = worlds[i].z;
+        var x = worlds[i].x, y = worlds[i].y, z = worlds[i].z;
         
-        /*
-        object.rotation.x = - Math.atan( (camera.position.y - worlds[i].y) / (camera.position.z - worlds[i].z) );
-        object.rotation.y = Math.atan( (camera.position.x - worlds[i].x) / (camera.position.z - worlds[i].z) );
-        object.rotation.z = 0;
-        */
-        
-        var textGeometry = new THREE.TextGeometry( '100', { size: 12, height: 1, curveSegments: 24 } );
+        var globe = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x777777 } ) );
+        globe.position.x = x;
+        globe.position.y = y;
+        globe.position.z = z;
+        scene.addObject( globe );
+
+        var textParent = new THREE.Object3D();
+        textParent.position.x = x;
+        textParent.position.y = y;
+        textParent.position.z = z;
+        textParent.rotation.x = -Math.atan((camera.position.y - y) / (camera.position.z - z));
+        textParent.rotation.y = Math.atan((camera.position.x - x) / (camera.position.z - z));
+        textParent.rotation.z = 0;
+
         var text = new THREE.Mesh( textGeometry, new THREE.MeshLambertMaterial( { color: 0xffffff } ) );
-        text.position.x = worlds[i].x;
-        text.position.y = worlds[i].y;
-        text.position.z = worlds[i].z + 24;
-        //text.rotation.x = - Math.atan( (camera.position.y - text.position.y) / (camera.position.z - worlds[i].z) );
-        //text.rotation.y = Math.atan( (camera.position.x - text.position.x) / (camera.position.z - worlds[i].z) );
-        //text.rotation.z = 0;
-        
-        
-        
-        //object.addChild( text );
-        scene.addObject( object );
-        overlayScene.addObject(text);
+        text.position.x = 0
+        text.position.y = 0;
+        text.position.z = WORLD_RADIUS + 4;
+        textParent.addChild(text);
+
+        var world = new Game.World(worlds[i], WORLD_RADIUS, 100, globe, text);
+        gameState.addWorld(world);
+
+        overlayScene.addObject(textParent);
       }
       
       // Create the intersection scene before the skybox is added. We don't want to hit-test against the skybox.
@@ -309,10 +272,10 @@
       //camera.position.y = radius * Math.sin( theta * Math.PI / 360 );
       //camera.position.z = radius * Math.cos( theta * Math.PI / 360 );
 
-      //cameraCube.target.position.x = - camera.position.x;
-      //cameraCube.target.position.y = - camera.position.y;
-      //cameraCube.target.position.z = - camera.position.z;
-      //cameraCube.update();
+      //skyboxCamera.target.position.x = - camera.position.x;
+      //skyboxCamera.target.position.y = - camera.position.y;
+      //skyboxCamera.target.position.z = - camera.position.z;
+      //skyboxCamera.update();
 
       // find intersections
 
@@ -320,9 +283,9 @@
       
       
       
-      for ( i = 0, l = scene.objects.length; i < l; i ++ ) {
+      for ( i = 0, l = overlayScene.objects.length; i < l; i ++ ) {
   
-        var obj = scene.objects[i];
+        var obj = overlayScene.objects[i];
         obj.rotation.x = - Math.atan( (camera.position.y - obj.position.y) / (camera.position.z - obj.position.z) );
         obj.rotation.y = Math.atan( (camera.position.x - obj.position.x) / (camera.position.z - obj.position.z) );    
       }
@@ -337,25 +300,25 @@
 
       if ( intersects.length > 0 ) {
 
-        if ( INTERSECTED != intersects[ 0 ].object ) {
+        if ( IntersectingWorld != intersects[ 0 ].object ) {
 
-          if ( INTERSECTED ) INTERSECTED.materials[ 0 ].color.setHex( INTERSECTED.currentHex );
+          if ( IntersectingWorld ) IntersectingWorld.materials[ 0 ].color.setHex( IntersectingWorld.currentHex );
 
-          INTERSECTED = intersects[ 0 ].object;
-          INTERSECTED.currentHex = INTERSECTED.materials[ 0 ].color.hex;
-          INTERSECTED.materials[ 0 ].color.setHex( 0xff0000 );
+          IntersectingWorld = intersects[ 0 ].object;
+          IntersectingWorld.currentHex = IntersectingWorld.materials[ 0 ].color.hex;
+          IntersectingWorld.materials[ 0 ].color.setHex( 0xff0000 );
         }
 
       } else {
 
-        if ( INTERSECTED ) INTERSECTED.materials[ 0 ].color.setHex( INTERSECTED.currentHex );
+        if ( IntersectingWorld ) IntersectingWorld.materials[ 0 ].color.setHex( IntersectingWorld.currentHex );
 
-        INTERSECTED = null;
+        IntersectingWorld = null;
 
       }
 
       renderer.clear();
-      renderer.render( skyboxScene, cameraCube );
+      renderer.render( skyboxScene, skyboxCamera );
       renderer.render( scene, camera );
       renderer.render( overlayScene, camera );
 
