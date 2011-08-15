@@ -11,6 +11,7 @@ Game.World = function(position, size, initial_count, sceneObject, overlayObject)
   this.size = size;
   this.count = initial_count;
   this.owner = null;
+  this.is_selected = false;
   
   this.sceneObject = sceneObject;
   this.overlayObject = overlayObject;
@@ -23,7 +24,8 @@ Game.World.prototype = {
     if (this.owner) {
       return this.owner.colour;
     } else {
-      return '0x777777';
+      if (this.is_selected) return 0x00FF00;
+      else return 0x777777;
     }
   },
 
@@ -34,6 +36,9 @@ Game.World.prototype = {
   setSelected : function(is_selected) {
     this.is_selected = is_selected;
   },
+  isSelected : function() {
+    return this.is_selected;
+  }
 };
 
 Game.StateEnum = {
@@ -57,6 +62,16 @@ Game.State.prototype = {
 
   addWorld : function(world) {
     this.worlds.push(world);
+  },
+
+  getSelectedWorlds : function() {
+    var selected_worlds = [];
+    for (var i = this.worlds.length - 1; i >= 0; i--) {
+      if (this.worlds[i].isSelected()) {
+        selected_worlds.push(this.worlds[i]);
+      }
+    }
+    return selected_worlds;
   },
 
   // Constructs a random set of spheres in a box. In a lousy kinda way.
