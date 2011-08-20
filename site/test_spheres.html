@@ -87,25 +87,61 @@
   <script type="text/javascript">
 
     var container, stats;
-    var camera, scene;
+    var g_camera, g_scene;
     var textScene;
-    var projector, renderer;
-    var skyboxCamera, skyboxScene;
+    var g_projector, renderer;
+    var g_skybox_camera, g_skybox_scene;
 
     var mouse = { x: 0, y: 0 };
     var g_intersecting_world;
     
     // TODO: Make this a range instead.
     var WORLD_RADIUS = 20;
-    var WORLD_COUNT = 75;
+    var WORLD_COUNT = 42;
     
     var UNSELECTED_COLOUR = 0x777777;
     var SELECTED_COLOUR = 0x00FF00;
+    var TRACE_OFFSET = WORLD_RADIUS + 3;
+    var OVERLAY_OFFSET = WORLD_RADIUS + 6;
 
     var g_game_state = new Game.State();
+    var g_world_coordinates = [];
+    var g_world_screen_coordinates = [];
 
     init();
     animate();
+
+    function copyVector3(vector3) {
+      return new THREE.Vector3(vector3.x, vector3.y, vector3.z);
+    }
+
+    // The thinking here is this:
+    // for every world coordinate
+    //   1) project it into view space using projector.projectVector. This
+    //      assumes that the camera's projection matrix is up to date (meaning
+    //      that camera.update() has been called).
+    //   2) transform the view space ([-1,1]) to screen space ([0,width|height])
+    //      for the x,y coordinates by using the mapping
+    //      Sx = Vx * width / 2 + width / 2
+    //      Sy = Vy * -1 * height / 2 + height / 2
+    //      Sz = 0
+    function calcScreenCoordinates(world_coordinates, camera, projector) {
+      var viewport_to_screen_mult = new THREE.Vector3(window.innerWidth / 2,
+                                                      -1 * (window.innerHeight / 2),
+                                                      0);
+      var viewport_to_screen_add = new THREE.Vector3(window.innerWidth / 2,
+                                                     window.innerHeight / 2,
+                                                     0);
+      var screen_coordinates = [];
+      for (var i = world_coordinates.length - 1; i >= 0; i--) {
+        var viewport_coord = projector.projectVector(
+            copyVector3(world_coordinates[i]), camera);
+        viewport_coord.multiplySelf(viewport_to_screen_mult);
+        var screen_coord = viewport_coord.addSelf(viewport_to_screen_add);
+        screen_coordinates.unshift(screen_coord);
+      }
+      return screen_coordinates;
+    }
 
     function init() {
       var info = document.createElement( 'div' );
@@ -113,13 +149,14 @@
       info.style.top = '10px';
       info.style.width = '100%';
       info.style.textAlign = 'center';
+      info.style.zIndex = 100;
       info.innerHTML = 'webgl - test';
       $("#main")[0].appendChild( info );
 
-      camera = new THREE.Camera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
-      //camera = new THREE.Camera( 90, 1, 1, 10000 );
-      //camera = new THREE.FlyCamera({
-      //camera = new THREE.QuakeCamera({
+      g_camera = new THREE.Camera( 50, window.innerWidth / window.innerHeight, 1, 10000 );
+      //g_camera = new THREE.Camera( 90, 1, 1, 10000 );
+      //g_camera = new THREE.FlyCamera({
+      //g_camera = new THREE.QuakeCamera({
 /*
         fov: 25,
         aspect: window.innerWidth / window.innerHeight,
@@ -133,68 +170,73 @@
         lookVertical: false,
           });
 */
-      camera.target.position.x = 0;
-      camera.target.position.y = 0;
-      camera.target.position.z = 0;
-      camera.position.x = 0;
-      camera.position.y = 0;
-      camera.position.z = 900;
+      g_camera.target.position.x = 0;
+      g_camera.target.position.y = 0;
+      g_camera.target.position.z = 0;
+      g_camera.position.x = 0;
+      g_camera.position.y = 0;
+      g_camera.position.z = 900;
+      g_camera.update();
 
-      skyboxCamera = new THREE.Camera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
-      skyboxScene = new THREE.Scene();
+      g_skybox_camera = new THREE.Camera( 60, window.innerWidth / window.innerHeight, 1, 100000 );
+      g_skybox_scene = new THREE.Scene();
 
-      scene = new THREE.Scene();
-      overlayScene = new THREE.Scene();
+      g_scene = new THREE.Scene();
+      g_overlay_scene = new THREE.Scene();
+
+      g_projector = new THREE.Projector();
 
       var light = new THREE.DirectionalLight( 0xffffff, 2 );
       light.position.x = 1;
       light.position.y = 1;
       light.position.z = 1;
       light.position.normalize();
-      scene.addLight( light );
+      g_scene.addLight( light );
 
       var light = new THREE.DirectionalLight( 0xffffff );
       light.position.x = - 1;
       light.position.y = - 1;
       light.position.z = - 1;
       light.position.normalize();
-      scene.addLight( light );
+      g_scene.addLight( light );
 
-      scene.addLight( light );
+      g_scene.addLight( light );
 
       var geometry = new THREE.SphereGeometry(WORLD_RADIUS, 20, 20);
       var textGeometry = new THREE.TextGeometry( '100', { size: 12, height: 1, curveSegments: 24 } );
 
-      var worlds = g_game_state.generateWorldPositions(WORLD_RADIUS, WORLD_COUNT, -400, 400, -400, 400, 0, 0);
+      g_world_coordinates = g_game_state.generateWorldPositions(WORLD_RADIUS, WORLD_COUNT, -400, 400, -400, 400, 0, 0);
 
-      for (var i = worlds.length - 1; i >= 0; i--) {
-        var x = worlds[i].x, y = worlds[i].y, z = worlds[i].z;
-        
+      for (var i = g_world_coordinates.length - 1; i >= 0; i--) {
+        var x = g_world_coordinates[i].x, y = g_world_coordinates[i].y, z = g_world_coordinates[i].z;
+
         var globe = new THREE.Mesh( geometry, new THREE.MeshLambertMaterial( { color: 0x777777 } ) );
         globe.position.x = x;
         globe.position.y = y;
         globe.position.z = z;
-        scene.addObject( globe );
+        g_scene.addObject( globe );
 
-        var textParent = new THREE.Object3D();
-        textParent.position.x = x;
-        textParent.position.y = y;
-        textParent.position.z = z;
-        textParent.rotation.x = -Math.atan((camera.position.y - y) / (camera.position.z - z));
-        textParent.rotation.y = Math.atan((camera.position.x - x) / (camera.position.z - z));
-        textParent.rotation.z = 0;
-
-        var text = new THREE.Mesh( textGeometry, new THREE.MeshLambertMaterial( { color: 0xffffff } ) );
-        text.position.x = 0
-        text.position.y = 0;
-        text.position.z = WORLD_RADIUS + 4;
-        textParent.addChild(text);
-
-        var world = new Game.World(worlds[i], WORLD_RADIUS, 100, globe, text);
+        var world = new Game.World(g_world_coordinates[i], WORLD_RADIUS, 100, globe, null);
         globe.world = world;
         g_game_state.addWorld(world);
+      }
 
-        overlayScene.addObject(textParent);
+      // Calculate the screen coordinates used for text overlays.
+      // TODO: if this works, remove the text geometry above.
+      var screen_coordinates = calcScreenCoordinates(g_world_coordinates, g_camera, g_projector);
+      for (var i = screen_coordinates.length - 1; i >= 0; i--) {
+        var label = document.createElement( 'div' );
+        label.style.position = 'absolute';
+        // TODO: the coords are fudged for now until I figure out how to center dom elements. Fix this.
+        label.style.left = Math.round(screen_coordinates[i].x) - 20 + 'px';
+        label.style.top = Math.round(screen_coordinates[i].y) - 20+ 'px';
+        label.style.zIndex = 10;
+        label.style.color = 'white';
+        label.style.fontSize = '14pt';
+        label.style.fontFamily = 'Arial';
+        
+        label.innerHTML = '100';
+        $("#main")[0].appendChild(label);
       }
 
       // Skybox
@@ -206,7 +248,7 @@
         path + 'pz' + format, path + 'nz' + format
       ];
 
-      var textureCube = THREE.ImageUtils.loadTextureCube( urls );
+      var textureCube = THREE.ImageUtils.loadTextureCube(urls);
       var material = new THREE.MeshBasicMaterial( { color: 0xffffff, envMap: textureCube } );
       var shader = THREE.ShaderUtils.lib["cube"];
       shader.uniforms["tCube"].texture = textureCube;
@@ -219,16 +261,15 @@
 
       } );
 
-      var skybox = new THREE.Mesh( new THREE.CubeGeometry( 100000, 100000, 100000, 1, 1, 1, null, true ), material );
+      var skybox = new THREE.Mesh(new THREE.CubeGeometry( 100000, 100000, 100000, 1, 1, 1, null, true ), material);
       skybox.name = 'skybox';
 
-      skyboxScene.addObject( skybox );
-
-      projector = new THREE.Projector();
+      g_skybox_scene.addObject( skybox );
 
       renderer = new THREE.WebGLRenderer();
       renderer.sortObjects = false;
       renderer.autoClear = false;
+      renderer.domElement.style.zIndex = -1;
       renderer.setSize( window.innerWidth, window.innerHeight );
 
       $("#main")[0].appendChild(renderer.domElement);
@@ -263,52 +304,47 @@
     }
     
 
-    //
-
     function animate() {
-
       requestAnimationFrame( animate );
-
       render();
       stats.update();
-
     }
 
-    var radius = 600;
-    var theta = 0;
+    function buildLineObject(start, end) {
+      var geometry = new THREE.Geometry();
+      var start_vertex = new THREE.Vertex(copyVector3(start));
+      start_vertex.position.z = TRACE_OFFSET;
+      geometry.vertices.push(start_vertex);
+      geometry.colors.push(new THREE.Color(SELECTED_COLOUR));
+
+      var end_vertex = new THREE.Vertex(copyVector3(end));
+      end_vertex.position.z = TRACE_OFFSET;
+      geometry.vertices.push(end_vertex);
+      geometry.colors.push(new THREE.Color(UNSELECTED_COLOUR));
+
+      var material = new THREE.LineBasicMaterial( { color: 0xffffff,
+                                                    opacity: 1,
+                                                    linewidth: 3,
+                                                    vertexColors: true } );
+      var line = new THREE.Line(geometry, material);
+      return line;
+    }
 
     function render() {
-
-      theta += 0.2;
-      //camera.position.x = radius * Math.sin( theta * Math.PI / 360 );
-      //camera.position.y = radius * Math.sin( theta * Math.PI / 360 );
-      //camera.position.z = radius * Math.cos( theta * Math.PI / 360 );
-
-      //skyboxCamera.target.position.x = - camera.position.x;
-      //skyboxCamera.target.position.y = - camera.position.y;
-      //skyboxCamera.target.position.z = - camera.position.z;
-      //skyboxCamera.update();
-
-      // find intersections
-
-      camera.update();
-      
-      
-      
-      for ( i = 0, l = overlayScene.objects.length; i < l; i ++ ) {
+      for ( i = 0, l = g_overlay_scene.objects.length; i < l; i ++ ) {
   
-        var obj = overlayScene.objects[i];
-        obj.rotation.x = - Math.atan( (camera.position.y - obj.position.y) / (camera.position.z - obj.position.z) );
-        obj.rotation.y = Math.atan( (camera.position.x - obj.position.x) / (camera.position.z - obj.position.z) );    
+        var obj = g_overlay_scene.objects[i];
+        obj.rotation.x = - Math.atan( (g_camera.position.y - obj.position.y) / (g_camera.position.z - obj.position.z) );
+        obj.rotation.y = Math.atan( (g_camera.position.x - obj.position.x) / (g_camera.position.z - obj.position.z) );    
       }
 
       // Compute the projected mouse cursor location
       var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 );
-      projector.unprojectVector( vector, camera );
+      g_projector.unprojectVector( vector, g_camera );
 
       // Look for an intersecting planet, highlight it.
-      var ray = new THREE.Ray( camera.position, vector.subSelf( camera.position ).normalize() );
-      var intersects = ray.intersectScene( scene );
+      var ray = new THREE.Ray( g_camera.position, vector.subSelf( g_camera.position ).normalize() );
+      var intersects = ray.intersectScene( g_scene );
       if ( intersects.length > 0 ) {
 
         if ( g_intersecting_world != intersects[ 0 ].object ) {
@@ -322,18 +358,21 @@
       }
 
       // If we have an active selection, render tracking lines from it to other planets.
+      var generated_scene = new THREE.Scene();
       if (g_intersecting_world) {
         var selected_worlds = g_game_state.getSelectedWorlds();
         for (var i = selected_worlds.length - 1; i >= 0; i--) {
           // Draw line between here and g_intersecting_world.
+          var line = buildLineObject(selected_worlds[i].pos, g_intersecting_world.world.pos);
+          generated_scene.addObject(line);
         }
       }
 
       renderer.clear();
-      renderer.render( skyboxScene, skyboxCamera );
-      renderer.render( scene, camera );
-      renderer.render( overlayScene, camera );
-
+      renderer.render(g_skybox_scene, g_skybox_camera);
+      renderer.render(g_scene, g_camera);
+      renderer.render(generated_scene, g_camera);
+      renderer.render(g_overlay_scene, g_camera);
     }
 
   </script>
