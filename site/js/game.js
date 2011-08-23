@@ -55,7 +55,7 @@ var Game = Game || {
                                                       -400, 400, 0, 0);
     var worlds = [];
     for (var i = world_positions.length - 1; i >= 0; i--) {
-      var initial_count = Math.round(Math.random()) * 45 + 5;
+      var initial_count = Math.round(Math.random() * 45) + 5;
       worlds.push(new Game.World(world_positions[i], radius, initial_count));
     }
     return worlds;
@@ -74,12 +74,19 @@ Game.World = function(position, size, initial_count) {
   this.count = initial_count;
   this.owner = null;
   this.is_selected = false;
-  
+
   this.sceneObject = null;
+
+  // Refers to a dom element with an innerHTML property that gets updated
+  // with the count value.
+  this.label = null;
 };
 
 Game.World.prototype = {
-  attachSceneObject : function (scene_object) {
+  attachLabel : function(label) {
+    this.label = label;
+  },
+  attachSceneObject : function(scene_object) {
     this.scene_object = scene_object;
     this.scene_object.world = this;
   },
@@ -91,11 +98,18 @@ Game.World.prototype = {
       else return 0x777777;
     }
   },
-
   updateOwner : function(owner) {
     this.owner = owner;
   },
-
+  incrementCount : function() {
+    this.setCount(this.count + 1);
+  },
+  setCount : function(new_count) {
+    this.count = new_count;
+    if (this.label) {
+      this.label.innerHTML = this.count;
+    }
+  },
   setSelected : function(is_selected) {
     this.is_selected = is_selected;
   },
@@ -117,6 +131,8 @@ Game.State = function(world_count, world_radius) {
 
   this.state = Game.StateEnum.STARTING;
   this.worlds = Game.generateWorlds(world_count, world_radius);
+
+  this.lastUpdate = new Date().getTime();
 };
 
 Game.State.prototype = {
@@ -137,6 +153,20 @@ Game.State.prototype = {
       }
     }
     return selected_worlds;
+  },
+  updateWorldCounts : function() {
+    for (var i = this.worlds.length - 1; i >= 0; i--) {
+      if (this.worlds[i].is_selected) {
+        this.worlds[i].incrementCount();
+      }
+    }
+  },
+  update : function() {
+    var now = new Date().getTime();
+    if (now - this.lastUpdate > 100) {
+      this.updateWorldCounts();
+      this.lastUpdate = now;
+    }
   }
 };
 

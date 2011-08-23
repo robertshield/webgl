@@ -101,8 +101,9 @@
     var g_game_state = new Game.State(WORLD_COUNT, WORLD_RADIUS);
     var g_game_renderer = new Game.Renderer(g_game_state);
 
+
     init();
-    animate();
+    animLoop();
 
 
     function init() {
@@ -134,8 +135,9 @@
         label.style.color = 'white';
         label.style.fontSize = '14pt';
         label.style.fontFamily = 'Arial';
-        
-        label.innerHTML = '100';
+
+        label.innerHTML = worlds[i].count;
+        worlds[i].attachLabel(label);
         $("#main")[0].appendChild(label);
       }
 
@@ -169,6 +171,22 @@
           intersecting_world.materials[ 0 ].color.setHex(SELECTED_COLOUR);
         }
       }
+    }
+
+    function animLoop() {
+      var running, lastFrame = new Date();
+
+      function loop( now ) {
+          // stop the loop if render returned false
+          if ( running !== false ) {
+            requestAnimationFrame(loop);
+            g_game_state.update();
+            running = g_game_renderer.render();
+            stats.update();
+            lastFrame = now;
+          }
+      }
+      loop(lastFrame);
     }
 
     function animate() {
