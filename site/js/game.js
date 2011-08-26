@@ -59,23 +59,32 @@ var Game = Game || {
       worlds.push(new Game.World(world_positions[i], radius, initial_count));
     }
     return worlds;
+  },
+
+  randomColour : function() {
+    return Math.random() * 0xFFFFFF;
   }
-  
-  
 };
 
 Game.Player = function(colour) {
   this.colour = colour;
 };
 
+var world_id = 0;
+
 Game.World = function(position, size, initial_count) {
+  // Give each world a unique id so we can add these to 'set'.
+  // TODO: Learn javascript.
+  this.id = world_id++;
   this.pos = position;
   this.size = size;
   this.count = initial_count;
+
+  // TODO: Encapsulate these (http://javascript.crockford.com/private.html)
   this.owner = null;
   this.is_selected = false;
 
-  this.sceneObject = null;
+  this.scene_object = null;
 
   // Refers to a dom element with an innerHTML property that gets updated
   // with the count value.
@@ -89,17 +98,20 @@ Game.World.prototype = {
   attachSceneObject : function(scene_object) {
     this.scene_object = scene_object;
     this.scene_object.world = this;
+    this.updateSceneObject();
   },
   getColour : function() {
-    if (this.owner) {
-      return this.owner.colour;
-    } else {
-      if (this.is_selected) return 0x00FF00;
-      else return 0x777777;
-    }
+    if (this.is_selected) return SELECTED_COLOUR;
+    else if (this.owner) return this.owner.colour;
+    else return UNSELECTED_COLOUR;
   },
-  updateOwner : function(owner) {
+  setOwner : function(owner) {
     this.owner = owner;
+    this.updateSceneObject();
+  },
+  setSelected : function(is_selected) {
+    this.is_selected = is_selected;
+    this.updateSceneObject();
   },
   incrementCount : function() {
     this.setCount(this.count + 1);
@@ -110,11 +122,10 @@ Game.World.prototype = {
       this.label.innerHTML = this.count;
     }
   },
-  setSelected : function(is_selected) {
-    this.is_selected = is_selected;
-  },
-  isSelected : function() {
-    return this.is_selected;
+  updateSceneObject : function() {
+    if (this.scene_object) {
+      this.scene_object.materials[0].color.setHex(this.getColour());
+    }
   }
 };
 
@@ -130,40 +141,86 @@ Game.State = function(world_count, world_radius) {
   this.world_radius = world_radius;
 
   this.state = Game.StateEnum.STARTING;
-  this.worlds = Game.generateWorlds(world_count, world_radius);
-
   this.lastUpdate = new Date().getTime();
+
+  this.worlds = [];
+  this.user = new Game.Player(Game.randomColour());
+  this.selected_worlds = {};
+
+  this.attack_ratio = 0.5;
 };
 
 Game.State.prototype = {
   restart : function() {
-    this.state = StateEnum.STARTING;
+    this.state = Game.StateEnum.STARTING;
     this.worlds = Game.generateWorlds(this.world_count, this.world_radius);
+    this.worlds[0].setOwner(this.user);
+
+    this.selected_worlds = {};
   },
 
   addWorld : function(world) {
     this.worlds.push(world);
   },
 
-  getSelectedWorlds : function() {
-    var selected_worlds = [];
-    for (var i = this.worlds.length - 1; i >= 0; i--) {
-      if (this.worlds[i].isSelected()) {
-        selected_worlds.push(this.worlds[i]);
-      }
-    }
-    return selected_worlds;
-  },
   updateWorldCounts : function() {
     for (var i = this.worlds.length - 1; i >= 0; i--) {
-      if (this.worlds[i].is_selected) {
+      if (this.worlds[i].owner) {
         this.worlds[i].incrementCount();
       }
     }
   },
+
+  onWorldSelected : function(world) {
+    if (world.owner == this.user) {
+      if (world.is_selected) {
+        world.setSelected(false);
+        if (world.id in this.selected_worlds) {
+          delete this.selected_worlds[world.id];
+        }
+      } else {
+        world.setSelected(true);
+        this.selected_worlds[world.id] = world;
+      }
+    } else {
+      // So apparently, doing for (x in y) on simple objects the in operator
+      // can be waylaid by stuff mucking with Object.prototype or something
+      // like that. hasOwnProperty() or Object.keys() which requires a shim for
+      // IE is the cure to this. Ugh.
+      var world_keys = Object.keys(this.selected_worlds);
+      if (world_keys.length > 0) {
+        // Attack
+        // Compute the number of attackers, decrementing the count of each
+        // selected world as we go.
+        // Un-select the selected world.
+        // Decrement the target count, if negative, update owner, multiply by -1
+
+        var total_attackers = 0;
+        for (var i = world_keys.length - 1; i >= 0; i--) {
+          var selected_world = this.selected_worlds[world_keys[i]];
+          var attackers = Math.ceil(selected_world.count * this.attack_ratio);
+          total_attackers += attackers;
+          selected_world.setCount(selected_world.count - attackers);
+
+          selected_world.setSelected(false);
+        }
+        this.selected_worlds = {};
+
+        // Now that we've accumulated attackers, tally the score.
+        var new_world_count = world.count - total_attackers;
+        if (new_world_count <= 0) {
+          world.setCount(-1 * new_world_count);
+          world.owner = this.user;
+        } else {
+          world.setCount(new_world_count);
+        }
+      }
+    }
+  },
+
   update : function() {
     var now = new Date().getTime();
-    if (now - this.lastUpdate > 100) {
+    if (now - this.lastUpdate > 500) {
       this.updateWorldCounts();
       this.lastUpdate = now;
     }

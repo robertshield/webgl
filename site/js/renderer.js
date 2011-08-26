@@ -171,8 +171,6 @@ Game.Renderer.prototype.render = function() {
   if (intersects.length > 0) {
     if (this.intersecting_world != intersects[0].object) {
       this.intersecting_world = intersects[0].object;
-      this.intersecting_world.currentHex =
-          this.intersecting_world.materials[ 0 ].color.hex;
       this.intersecting_world.materials[0].color.setHex( 0xff0000 );
     }
   } else {
@@ -187,10 +185,11 @@ Game.Renderer.prototype.render = function() {
   // planets.
   var generated_scene = new THREE.Scene();
   if (this.intersecting_world) {
-    var selected_worlds = this.game_state.getSelectedWorlds();
-    for (var i = selected_worlds.length - 1; i >= 0; i--) {
+    var selected_worlds = this.game_state.selected_worlds;
+    var keys = Object.keys(selected_worlds);
+    for (var i = keys.length - 1; i >= 0; i--) {
       // Draw line between here and this.intersecting_world.
-      var line = this.buildLineObject(selected_worlds[i].pos,
+      var line = this.buildLineObject(selected_worlds[keys[i]].pos,
                                       this.intersecting_world.world.pos);
       generated_scene.addObject(line);
     }

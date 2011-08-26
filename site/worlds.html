@@ -58,6 +58,19 @@
   </div> <!--! end of #container -->
   
   <!-- JavaScript at the bottom for fast page loading -->
+  <script type="text/javascript">
+    // Shims:
+    // TODO: Put these in a script somewhere.
+    if(!Object.keys) Object.keys = function(o) {
+      if (o !== Object(o))
+        throw new TypeError('Object.keys called on non-object');
+      var ret=[],p;
+      for(p in o) if (Object.prototype.hasOwnProperty.call(o,p)) ret.push(p);
+      return ret;
+    };
+  </script>
+
+
 
   <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if necessary -->
   <script src="//ajax.googleapis.com/ajax/libs/jquery/1.5.1/jquery.js"></script>
@@ -86,6 +99,9 @@
   <script type="text/javascript" src="js/renderer.js"></script>
 
   <script type="text/javascript">
+  
+  
+  
 
     var container, stats;
 
@@ -116,6 +132,7 @@
       info.innerHTML = 'webgl - test';
       $("#main")[0].appendChild( info );
 
+      g_game_state.restart();
       var worlds = g_game_state.worlds;
 
       g_game_renderer.initScene();
@@ -163,13 +180,7 @@
       event.preventDefault();
       var intersecting_world = g_game_renderer.intersecting_world;
       if (intersecting_world) {
-        if (intersecting_world.world.isSelected()) {
-          intersecting_world.world.setSelected(false);
-          intersecting_world.materials[ 0 ].color.setHex(UNSELECTED_COLOUR);
-        } else {
-          intersecting_world.world.setSelected(true);
-          intersecting_world.materials[ 0 ].color.setHex(SELECTED_COLOUR);
-        }
+        g_game_state.onWorldSelected(intersecting_world.world);
       }
     }
 
