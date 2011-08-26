@@ -1,6 +1,9 @@
-// Game data structures.
+// Game related code.
 
+// Utility functions
+//----------------------------------------------------------------------------
 var Game = Game || {
+
   // Constructs a random set of spheres in a box. In a lousy kinda way.
   // Will eventually terminate if the ranges are sufficiently large to hold
   // count objects of radius size ;)
@@ -66,12 +69,17 @@ var Game = Game || {
   }
 };
 
+// Player
+//----------------------------------------------------------------------------
 Game.Player = function(colour) {
   this.colour = colour;
+  this.attack_ratio = 0.5;
 };
 
-var world_id = 0;
 
+// World
+//----------------------------------------------------------------------------
+var world_id = 0;
 Game.World = function(position, size, initial_count) {
   // Give each world a unique id so we can add these to 'set'.
   // TODO: Learn javascript.
@@ -129,6 +137,53 @@ Game.World.prototype = {
   }
 };
 
+
+// ShipSwarm
+//----------------------------------------------------------------------------
+Game.ShipSwarm = function(owner, count, start_world, target_world) {
+  this.owner = owner;
+  this.count = count;
+  this.start_world = start_world;
+  this.target_world = target_world;
+
+  this.pos = start_world.pos.clone();
+
+  var travel_vector = target_world.pos.clone().subSelf(this.pos);
+  this.distance_to_travel = travel_vector.length();
+  this.movement_vector = travel_vector.divideScalar(this.distance_to_travel);
+
+  this.distance_travelled = 0;
+  this.has_arrived = false;
+
+  this.velocity = SHIP_SWARM_VELOCITY;
+  this.last_update = new Date().getTime();
+}
+
+Game.ShipSwarm.prototype = {
+  update : function(new_time) {
+    if (!this.has_arrived) {
+      var position_delta = this.velocity * (new_time - this.last_update);
+
+      // Update our position and distance travelled.
+      this.pos.addSelf(
+          this.movement_vector.clone().multiplyScalar(position_delta));
+      this.distance_travelled += position_delta;
+
+      // Figure out if we've arrived.
+      if (this.distance_travelled >= this.distance_to_travel) {
+        this.has_arrived = true;
+      }
+
+      // Update the timestamp.
+      this.last_update = new_time;
+    }
+  }
+}
+
+
+// State
+//----------------------------------------------------------------------------
+// TODO: Move to constants.
 Game.StateEnum = {
   STARTING : 1,
   PLAYING : 2,
@@ -141,13 +196,13 @@ Game.State = function(world_count, world_radius) {
   this.world_radius = world_radius;
 
   this.state = Game.StateEnum.STARTING;
-  this.lastUpdate = new Date().getTime();
+  this.last_update = new Date().getTime();
 
   this.worlds = [];
   this.user = new Game.Player(Game.randomColour());
   this.selected_worlds = {};
 
-  this.attack_ratio = 0.5;
+  this.ship_swarms = [];
 };
 
 Game.State.prototype = {
@@ -171,6 +226,58 @@ Game.State.prototype = {
     }
   },
 
+  updateShipSwarms : function(new_time) {
+    for (var i = this.ship_swarms.length - 1; i >= 0; i--) {
+      var swarm = this.ship_swarms[i];
+      swarm.update(new_time);
+      if (swarm.has_arrived) {
+        var new_world_count = swarm.target_world.count - swarm.count;
+        // Now that we've accumulated attackers, tally the score.
+        if (new_world_count <= 0) {
+          swarm.target_world.setCount(-1 * new_world_count);
+          swarm.target_world.setOwner(this.user);
+        } else {
+          swarm.target_world.setCount(new_world_count);
+        }
+
+        this.ship_swarms.splice(i, 1);
+      }
+    }
+  },
+
+  attack : function(target_world) {
+    // So apparently, doing for (x in y) on simple objects the in operator
+    // can be waylaid by stuff mucking with Object.prototype or something
+    // like that. hasOwnProperty() or Object.keys() which requires a shim for
+    // IE is the cure to this. Ugh.
+    var world_keys = Object.keys(this.selected_worlds);
+    if (world_keys.length > 0) {
+      // Compute the number of attackers, decrementing the count of each
+      // selected world as we go.
+      // Un-select the selected world.
+      // Decrement the target count, if negative, update owner, multiply by -1
+  
+      var total_attackers = 0;
+      for (var i = world_keys.length - 1; i >= 0; i--) {
+        var selected_world = this.selected_worlds[world_keys[i]];
+        var attackers =
+            Math.ceil(selected_world.count * this.user.attack_ratio);
+        selected_world.setCount(selected_world.count - attackers);
+        selected_world.setSelected(false);
+
+        var swarm = new Game.ShipSwarm(this.user,
+                                       attackers,
+                                       selected_world,
+                                       target_world);
+        this.ship_swarms.push(swarm);
+
+        // Temporary:
+        total_attackers += attackers;
+      }
+      this.selected_worlds = {};
+    }
+  },
+
   onWorldSelected : function(world) {
     if (world.owner == this.user) {
       if (world.is_selected) {
@@ -183,47 +290,20 @@ Game.State.prototype = {
         this.selected_worlds[world.id] = world;
       }
     } else {
-      // So apparently, doing for (x in y) on simple objects the in operator
-      // can be waylaid by stuff mucking with Object.prototype or something
-      // like that. hasOwnProperty() or Object.keys() which requires a shim for
-      // IE is the cure to this. Ugh.
-      var world_keys = Object.keys(this.selected_worlds);
-      if (world_keys.length > 0) {
-        // Attack
-        // Compute the number of attackers, decrementing the count of each
-        // selected world as we go.
-        // Un-select the selected world.
-        // Decrement the target count, if negative, update owner, multiply by -1
-
-        var total_attackers = 0;
-        for (var i = world_keys.length - 1; i >= 0; i--) {
-          var selected_world = this.selected_worlds[world_keys[i]];
-          var attackers = Math.ceil(selected_world.count * this.attack_ratio);
-          total_attackers += attackers;
-          selected_world.setCount(selected_world.count - attackers);
-
-          selected_world.setSelected(false);
-        }
-        this.selected_worlds = {};
-
-        // Now that we've accumulated attackers, tally the score.
-        var new_world_count = world.count - total_attackers;
-        if (new_world_count <= 0) {
-          world.setCount(-1 * new_world_count);
-          world.owner = this.user;
-        } else {
-          world.setCount(new_world_count);
-        }
-      }
+      this.attack(world);
     }
   },
 
   update : function() {
     var now = new Date().getTime();
-    if (now - this.lastUpdate > 500) {
+
+    // Update the world counts.
+    if (now - this.last_update > 500) {
       this.updateWorldCounts();
-      this.lastUpdate = now;
+      this.last_update = now;
     }
+
+    this.updateShipSwarms(now);
   }
 };
 

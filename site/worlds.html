@@ -95,32 +95,20 @@
   
     -->
 
+
+  <script type="text/javascript" src="js/game_constants.js"></script>
   <script type="text/javascript" src="js/game.js"></script>
   <script type="text/javascript" src="js/renderer.js"></script>
 
   <script type="text/javascript">
-  
-  
-  
-
     var container, stats;
-
-    // TODO: Make this a range instead.
-    var WORLD_RADIUS = 20;
-    var WORLD_COUNT = 42;
-
-    var UNSELECTED_COLOUR = 0x777777;
-    var SELECTED_COLOUR = 0x00FF00;
-    var TRACE_OFFSET = WORLD_RADIUS + 3;
-    var OVERLAY_OFFSET = WORLD_RADIUS + 6;
 
     var g_game_state = new Game.State(WORLD_COUNT, WORLD_RADIUS);
     var g_game_renderer = new Game.Renderer(g_game_state);
 
-
+    // Set up and run.
     init();
     animLoop();
-
 
     function init() {
       var info = document.createElement( 'div' );
@@ -199,13 +187,6 @@
       }
       loop(lastFrame);
     }
-
-    function animate() {
-      requestAnimationFrame(animate);
-      g_game_renderer.render();
-      stats.update();
-    }
-
   </script>
 
   <!-- scripts concatenated and minified via ant build script-->

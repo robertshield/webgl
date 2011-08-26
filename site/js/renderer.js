@@ -78,7 +78,10 @@ Game.Renderer.prototype.initScene = function() {
                               material);
   skybox.name = 'skybox';
   this.skybox_scene.addObject(skybox);
-  
+
+  // Set up the sprites
+  this.sprite_texture = THREE.ImageUtils.loadTexture("img/sprites/circle.png");
+
   // Create the THREE.js renderer:
   this.renderer = new THREE.WebGLRenderer();
   this.renderer.sortObjects = false;
@@ -181,10 +184,14 @@ Game.Renderer.prototype.render = function() {
     this.intersecting_world = null;
   }
 
+  // Scene for all the dynamically generated stuff (does not participate in
+  // hit testing).
+  var generated_scene = new THREE.Scene();
+
   // If we have an active selection, render tracking lines from it to other
   // planets.
-  var generated_scene = new THREE.Scene();
-  if (this.intersecting_world) {
+  if (this.intersecting_world &&
+      this.intersecting_world.world.owner != this.game_state.user) {
     var selected_worlds = this.game_state.selected_worlds;
     var keys = Object.keys(selected_worlds);
     for (var i = keys.length - 1; i >= 0; i--) {
@@ -194,6 +201,17 @@ Game.Renderer.prototype.render = function() {
       generated_scene.addObject(line);
     }
   }
+
+  var ship_swarms = g_game_state.ship_swarms;
+  var sprite_group = new THREE.Object3D();
+  for (var i = ship_swarms.length - 1; i >= 0; i--) {
+    var sprite = new THREE.Sprite( { map: this.sprite_texture,
+                                     useScreenCoordinates: false } );
+    sprite.position.copy(ship_swarms[i].pos);
+    sprite.scale = new THREE.Vector3(0.5, 0.5, 0.5);
+    sprite_group.addChild(sprite);
+  }
+  generated_scene.addObject(sprite_group);
 
   this.renderer.clear();
   this.renderer.render(this.skybox_scene, this.skybox_camera);
