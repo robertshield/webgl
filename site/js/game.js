@@ -157,11 +157,21 @@ Game.ShipSwarm = function(owner, count, start_world, target_world) {
 
   this.velocity = SHIP_SWARM_VELOCITY;
   this.last_update = new Date().getTime();
+
+  this.boids = [];
+  for (var i = 0; i < count; i++) {
+    this.boids.push(new TrackingBoid(this.pos.clone()));
+  }
 }
 
 Game.ShipSwarm.prototype = {
   update : function(new_time) {
     if (!this.has_arrived) {
+      for (var i = this.count - 1; i >= 0; i--) {
+        this.boids[i].run(this.boids);
+      }
+
+      // TODO: Old stuff, remove it when the boids are done:
       var position_delta = this.velocity * (new_time - this.last_update);
 
       // Update our position and distance travelled.
@@ -203,6 +213,8 @@ Game.State = function(world_count, world_radius) {
   this.selected_worlds = {};
 
   this.ship_swarms = [];
+
+  this.renderer = null;
 };
 
 Game.State.prototype = {
@@ -218,12 +230,24 @@ Game.State.prototype = {
     this.worlds.push(world);
   },
 
+  setRenderer : function(renderer) {
+    this.renderer = renderer;
+  },
+
   updateWorldCounts : function() {
     for (var i = this.worlds.length - 1; i >= 0; i--) {
       if (this.worlds[i].owner) {
         this.worlds[i].incrementCount();
       }
     }
+  },
+
+  clearSelectedWorlds : function() {
+    var world_keys = Object.keys(this.selected_worlds);
+    for (var i = world_keys.length - 1; i >= 0; i--) {
+      this.selected_worlds[world_keys[i]].setSelected(false);
+    }
+    this.selected_worlds = {};
   },
 
   updateShipSwarms : function(new_time) {
@@ -252,12 +276,6 @@ Game.State.prototype = {
     // IE is the cure to this. Ugh.
     var world_keys = Object.keys(this.selected_worlds);
     if (world_keys.length > 0) {
-      // Compute the number of attackers, decrementing the count of each
-      // selected world as we go.
-      // Un-select the selected world.
-      // Decrement the target count, if negative, update owner, multiply by -1
-  
-      var total_attackers = 0;
       for (var i = world_keys.length - 1; i >= 0; i--) {
         var selected_world = this.selected_worlds[world_keys[i]];
         var attackers =
@@ -270,11 +288,7 @@ Game.State.prototype = {
                                        selected_world,
                                        target_world);
         this.ship_swarms.push(swarm);
-
-        // Temporary:
-        total_attackers += attackers;
       }
-      this.selected_worlds = {};
     }
   },
 
@@ -291,6 +305,7 @@ Game.State.prototype = {
       }
     } else {
       this.attack(world);
+      this.clearSelectedWorlds();
     }
   },
 

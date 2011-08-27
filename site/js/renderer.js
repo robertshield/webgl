@@ -15,6 +15,8 @@ Game.Renderer = function(game_state) {
   this.mouse = { x: 0, y: 0 };
 
   this.intersecting_world;
+
+  this.boid_swarms = [];
 }
 
 Game.Renderer.prototype.initScene = function() {
@@ -160,6 +162,10 @@ Game.Renderer.prototype.buildLineObject = function(start, end) {
                                                 vertexColors: true } );
   var line = new THREE.Line(geometry, material);
   return line;
+};
+
+Game.Renderer.prototype.addBoidSwarm = function(boids) {
+  // TODO: Add renderer representations for boids.
 };
 
 Game.Renderer.prototype.render = function() {
