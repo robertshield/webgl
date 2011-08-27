@@ -255,15 +255,19 @@ Game.State.prototype = {
       var swarm = this.ship_swarms[i];
       swarm.update(new_time);
       if (swarm.has_arrived) {
-        var new_world_count = swarm.target_world.count - swarm.count;
-        // Now that we've accumulated attackers, tally the score.
-        if (new_world_count <= 0) {
-          swarm.target_world.setCount(-1 * new_world_count);
-          swarm.target_world.setOwner(this.user);
+        if (swarm.owner != swarm.target_world.owner) {
+          var new_world_count = swarm.target_world.count - swarm.count;
+          // Now that we've accumulated attackers, tally the score.
+          if (new_world_count <= 0) {
+            swarm.target_world.setCount(-1 * new_world_count);
+            swarm.target_world.setOwner(this.user);
+          } else {
+            swarm.target_world.setCount(new_world_count);
+          }
         } else {
+          var new_world_count = swarm.target_world.count + swarm.count;
           swarm.target_world.setCount(new_world_count);
         }
-
         this.ship_swarms.splice(i, 1);
       }
     }
