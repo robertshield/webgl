@@ -167,6 +167,18 @@ Game.ShipSwarm.prototype = {
           if (boid.onArrived) {
             boid.onArrived(boid.scene, boid.ship);
           }
+          if (this.owner != this.target_world.owner) {
+            var new_world_count = this.target_world.count - 1;
+            // Now that we've accumulated attackers, tally the score.
+            if (new_world_count <= 0) {
+              this.target_world.setCount(-1 * new_world_count);
+              this.target_world.setOwner(this.owner);
+            } else {
+              this.target_world.setCount(new_world_count);
+            }
+          } else {
+            this.target_world.incrementCount();
+          }
           this.boids.splice(i, 1);
         }
       }
@@ -246,19 +258,6 @@ Game.State.prototype = {
 
       // Delete the swarm once it reaches its destination.
       if (swarm.has_arrived) {
-        if (swarm.owner != swarm.target_world.owner) {
-          var new_world_count = swarm.target_world.count - swarm.count;
-          // Now that we've accumulated attackers, tally the score.
-          if (new_world_count <= 0) {
-            swarm.target_world.setCount(-1 * new_world_count);
-            swarm.target_world.setOwner(this.user);
-          } else {
-            swarm.target_world.setCount(new_world_count);
-          }
-        } else {
-          var new_world_count = swarm.target_world.count + swarm.count;
-          swarm.target_world.setCount(new_world_count);
-        }
         this.ship_swarms.splice(i, 1);
       }
     }
