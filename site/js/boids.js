@@ -13,23 +13,20 @@ var TrackingBoid = function(start_position, goal_position) {
      _depth = 200,
      _goal,
      _neighborhoodRadius = 100,
-     _maxSpeed = 4,
+     _maxSpeed = 2,
      _maxSteerForce = 0.1,
-     _max_separation_factor = 20,
+     _max_separation_factor = 800,
      _avoidWalls = false,
-     _arrival_threshold = 3;
+     _arrival_threshold = 20;
 
   var _starting_dist_to_goal;
   var _shortest_dist_to_goal = Number.MAX_VALUE;
 
-  this.position = new THREE.Vector3();
+  this.position = start_position.clone();
   this.velocity = new THREE.Vector3();
   _acceleration = new THREE.Vector3();
-
-  this.setGoal = function(target) {
-    _goal = target;
-    _starting_dist_to_goal = _goal.clone().subSelf(this.position).length();
-  }
+  _goal = goal_position.clone();
+  _starting_dist_to_goal = _goal.clone().subSelf(this.position).length();
 
   this.hasArrived = function() {
     if(_goal &&

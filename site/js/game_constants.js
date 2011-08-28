@@ -1,6 +1,6 @@
 // TODO: Make this a range instead.
-var WORLD_RADIUS = 20;
-var WORLD_COUNT = 42;
+var WORLD_RADIUS = 32;
+var WORLD_COUNT = 25;
 
 var UNSELECTED_COLOUR = 0x777777;
 var SELECTED_COLOUR = 0x00FF00;

@@ -148,44 +148,33 @@ Game.ShipSwarm = function(owner, count, start_world, target_world) {
 
   this.pos = start_world.pos.clone();
 
-  var travel_vector = target_world.pos.clone().subSelf(this.pos);
-  this.distance_to_travel = travel_vector.length();
-  this.movement_vector = travel_vector.divideScalar(this.distance_to_travel);
-
-  this.distance_travelled = 0;
   this.has_arrived = false;
-
-  this.velocity = SHIP_SWARM_VELOCITY;
-  this.last_update = new Date().getTime();
 
   this.boids = [];
   for (var i = 0; i < count; i++) {
-    this.boids.push(new TrackingBoid(this.pos.clone()));
+    this.boids.push(new TrackingBoid(this.pos, this.target_world.pos));
   }
 }
 
 Game.ShipSwarm.prototype = {
   update : function(new_time) {
     if (!this.has_arrived) {
-      for (var i = this.count - 1; i >= 0; i--) {
-        this.boids[i].run(this.boids);
+      for (var i = 0; i < this.boids.length; i++) {
+        var boid = this.boids[i];
+        boid.run(this.boids);
+
+        if (boid.hasArrived()) {
+          if (boid.onArrived) {
+            boid.onArrived(boid.scene, boid.ship);
+          }
+          this.boids.splice(i, 1);
+        }
       }
-
-      // TODO: Old stuff, remove it when the boids are done:
-      var position_delta = this.velocity * (new_time - this.last_update);
-
-      // Update our position and distance travelled.
-      this.pos.addSelf(
-          this.movement_vector.clone().multiplyScalar(position_delta));
-      this.distance_travelled += position_delta;
 
       // Figure out if we've arrived.
-      if (this.distance_travelled >= this.distance_to_travel) {
+      if (this.boids.length == 0) {
         this.has_arrived = true;
       }
-
-      // Update the timestamp.
-      this.last_update = new_time;
     }
   }
 }
@@ -254,6 +243,8 @@ Game.State.prototype = {
     for (var i = this.ship_swarms.length - 1; i >= 0; i--) {
       var swarm = this.ship_swarms[i];
       swarm.update(new_time);
+
+      // Delete the swarm once it reaches its destination.
       if (swarm.has_arrived) {
         if (swarm.owner != swarm.target_world.owner) {
           var new_world_count = swarm.target_world.count - swarm.count;
@@ -292,6 +283,7 @@ Game.State.prototype = {
                                        selected_world,
                                        target_world);
         this.ship_swarms.push(swarm);
+        this.renderer.addShipSwarm(swarm);
       }
     }
   },

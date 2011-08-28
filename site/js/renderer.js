@@ -8,7 +8,9 @@ Game.Renderer = function(game_state) {
 
   this.skybox_camera = null;
   this.skybox_scene = new THREE.Scene();
-  
+
+  this.ships_scene = new THREE.Scene();
+
   this.projector = new THREE.Projector();
   this.renderer = null;
 
@@ -16,7 +18,7 @@ Game.Renderer = function(game_state) {
 
   this.intersecting_world;
 
-  this.boid_swarms = [];
+  this.ship_swarms = [];
 }
 
 Game.Renderer.prototype.initScene = function() {
@@ -26,6 +28,7 @@ Game.Renderer.prototype.initScene = function() {
                                  window.innerWidth / window.innerHeight,
                                  1,
                                  10000 );
+  //this.camera.projectionMatrix = THREE.Matrix4.makeOrtho( window.innerWidth / - 2, window.innerWidth / 2, window.innerHeight / 2, window.innerHeight / - 2, - 2000, 1000 );
   this.camera.target.position.x = 0;
   this.camera.target.position.y = 0;
   this.camera.target.position.z = 0;
@@ -53,6 +56,7 @@ Game.Renderer.prototype.initScene = function() {
   light.position.z = - 1;
   light.position.normalize();
   this.scene.addLight( light );
+
 
   // Set up the skybox
   var path = "img/skybox/";
@@ -112,10 +116,6 @@ Game.Renderer.prototype.updateMouse = function(x, y) {
   this.mouse.y = y;
 }
 
-Game.Renderer.prototype.copyVector3 = function(vector3) {
-  return new THREE.Vector3(vector3.x, vector3.y, vector3.z);
-}
-
 Game.Renderer.prototype.calcScreenCoordinates = function(worlds) {
   // The thinking here is this:
   // for every world coordinate
@@ -136,7 +136,7 @@ Game.Renderer.prototype.calcScreenCoordinates = function(worlds) {
   var screen_coordinates = [];
   for (var i = worlds.length - 1; i >= 0; i--) {
     var viewport_coord = this.projector.projectVector(
-        this.copyVector3(worlds[i].pos), this.camera);
+        worlds[i].pos.clone(), this.camera);
     viewport_coord.multiplySelf(viewport_to_screen_mult);
     var screen_coord = viewport_coord.addSelf(viewport_to_screen_add);
     screen_coordinates.unshift(screen_coord);
@@ -146,12 +146,12 @@ Game.Renderer.prototype.calcScreenCoordinates = function(worlds) {
 
 Game.Renderer.prototype.buildLineObject = function(start, end) {
   var geometry = new THREE.Geometry();
-  var start_vertex = new THREE.Vertex(this.copyVector3(start));
+  var start_vertex = new THREE.Vertex(start.clone());
   start_vertex.position.z = TRACE_OFFSET;
   geometry.vertices.push(start_vertex);
   geometry.colors.push(new THREE.Color(SELECTED_COLOUR));
 
-  var end_vertex = new THREE.Vertex(this.copyVector3(end));
+  var end_vertex = new THREE.Vertex(end.clone());
   end_vertex.position.z = TRACE_OFFSET;
   geometry.vertices.push(end_vertex);
   geometry.colors.push(new THREE.Color(UNSELECTED_COLOUR));
@@ -164,8 +164,42 @@ Game.Renderer.prototype.buildLineObject = function(start, end) {
   return line;
 };
 
-Game.Renderer.prototype.addBoidSwarm = function(boids) {
-  // TODO: Add renderer representations for boids.
+Game.Renderer.prototype.addShipSwarm = function(ship_swarm) {
+  var ships = [];
+  var scene = this.ships_scene;
+
+  // Ships are rotated around the z-axis to point at their target.
+  var z_rot = Math.atan2(
+      ship_swarm.target_world.pos.y - ship_swarm.start_world.pos.y,
+      ship_swarm.target_world.pos.x - ship_swarm.start_world.pos.x);
+  var ship_rotation = new THREE.Vector3(0, 0, z_rot);
+
+  for (var i = 0, il = ship_swarm.boids.length; i < il; i++) {
+    var ship = ships[i] = new THREE.Mesh(
+        new Ship(),
+        new THREE.MeshBasicMaterial( { color: ship_swarm.owner.colour } ) );
+    ship.position = ship_swarm.boids[i].position;
+    ship.rotation = ship_rotation;
+    ship.doubleSided = true;
+    ship.scale = new THREE.Vector3(3, 3, 3);
+
+    // Nasty hack used to update the rotation during rendering.
+    // TODO: Feed the ship rotation directly from the boid somehow.
+    ship.target_pos = ship_swarm.target_world.pos.clone();
+
+    scene.addObject(ship);
+
+    // TODO: Understand closures. Should be able to pass scene and ship
+    // inside a closure I reckon.
+    function deleteShip(scene, ship) {
+      scene.removeObject(ship);
+    }
+    ship_swarm.boids[i].scene = scene;
+    ship_swarm.boids[i].ship = ship;
+    ship_swarm.boids[i].onArrived = deleteShip;
+  }
+
+  this.ship_swarms.push(ships);
 };
 
 Game.Renderer.prototype.render = function() {
@@ -208,19 +242,21 @@ Game.Renderer.prototype.render = function() {
     }
   }
 
-  var ship_swarms = g_game_state.ship_swarms;
-  var sprite_group = new THREE.Object3D();
-  for (var i = ship_swarms.length - 1; i >= 0; i--) {
-    var sprite = new THREE.Sprite( { map: this.sprite_texture,
-                                     useScreenCoordinates: false } );
-    sprite.position.copy(ship_swarms[i].pos);
-    sprite.scale = new THREE.Vector3(0.5, 0.5, 0.5);
-    sprite_group.addChild(sprite);
+  // Update ship rotations.
+  for (var i = this.ship_swarms.length - 1; i >= 0; i--) {
+    for (var j = this.ship_swarms[i].length - 1; j >= 0; j--) {
+      var ship = this.ship_swarms[i][j];
+      var z_rot = Math.atan2(ship.target_pos.y - ship.position.y,
+                             ship.target_pos.x - ship.position.x);
+      ship.rotation = new THREE.Vector3(0, 0, z_rot);
+    }
   }
-  generated_scene.addObject(sprite_group);
 
   this.renderer.clear();
   this.renderer.render(this.skybox_scene, this.skybox_camera);
   this.renderer.render(this.scene, this.camera);
   this.renderer.render(generated_scene, this.camera);
+
+  // Draw the boids during an attack.
+  this.renderer.render(this.ships_scene, this.camera);
 }

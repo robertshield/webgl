@@ -88,6 +88,7 @@
 
   <!-- TODO: structure this better -->
   <script type="text/javascript" src="js/game_constants.js"></script>
+  <script type="text/javascript" src="js/ship.js"></script>
   <script type="text/javascript" src="js/boids.js"></script>
   <script type="text/javascript" src="js/game.js"></script>
   <script type="text/javascript" src="js/renderer.js"></script>
@@ -97,6 +98,7 @@
 
     var g_game_state = new Game.State(WORLD_COUNT, WORLD_RADIUS);
     var g_game_renderer = new Game.Renderer(g_game_state);
+    g_game_state.setRenderer(g_game_renderer);
 
     // Set up and run.
     init();
