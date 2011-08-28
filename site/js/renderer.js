@@ -154,7 +154,7 @@ Game.Renderer.prototype.buildLineObject = function(start, end) {
   var end_vertex = new THREE.Vertex(end.clone());
   end_vertex.position.z = TRACE_OFFSET;
   geometry.vertices.push(end_vertex);
-  geometry.colors.push(new THREE.Color(UNSELECTED_COLOUR));
+  geometry.colors.push(new THREE.Color(NEUTRAL_COLOUR));
 
   var material = new THREE.LineBasicMaterial( { color: 0xffffff,
                                                 opacity: 1,
@@ -214,7 +214,7 @@ Game.Renderer.prototype.render = function() {
   if (intersects.length > 0) {
     if (this.intersecting_world != intersects[0].object) {
       this.intersecting_world = intersects[0].object;
-      this.intersecting_world.materials[0].color.setHex( 0xff0000 );
+      this.intersecting_world.materials[0].color.setHex( HOVER_COLOUR );
     }
   } else {
     if (this.intersecting_world) {

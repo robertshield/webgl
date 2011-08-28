@@ -111,7 +111,7 @@ Game.World.prototype = {
   getColour : function() {
     if (this.is_selected) return SELECTED_COLOUR;
     else if (this.owner) return this.owner.colour;
-    else return UNSELECTED_COLOUR;
+    else return NEUTRAL_COLOUR;
   },
   setOwner : function(owner) {
     this.owner = owner;
@@ -208,11 +208,13 @@ Game.State = function(world_count, world_radius) {
 
   this.state = Game.StateEnum.STARTING;
   this.last_update = new Date().getTime();
+  this.last_ai_update = new Date().getTime();
 
   this.worlds = [];
-  this.user = new Game.Player(Game.randomColour());
-  this.selected_worlds = {};
+  this.user = new Game.Player(USER_COLOUR);
+  this.ai = new Game.Player(AI_COLOUR);
 
+  this.selected_worlds = {};
   this.ship_swarms = [];
 
   this.renderer = null;
@@ -223,6 +225,9 @@ Game.State.prototype = {
     this.state = Game.StateEnum.STARTING;
     this.worlds = Game.generateWorlds(this.world_count, this.world_radius);
     this.worlds[0].setOwner(this.user);
+    this.worlds[0].setCount(PLAYER_START_COUNT);
+    this.worlds[1].setOwner(this.ai);
+    this.worlds[1].setCount(PLAYER_START_COUNT);
 
     this.selected_worlds = {};
   },
@@ -304,6 +309,43 @@ Game.State.prototype = {
     }
   },
 
+  // Causes the AI to move. Returns true if the AI has won.
+  makeAIMove : function() {
+    // Find a target world.
+    var min_count = Number.MAX_VALUE;
+    var target_world = null;
+    for (var i = this.worlds.length - 1; i >= 0; i--) {
+      if (this.worlds[i].count < min_count &&
+          this.worlds[i].owner != this.ai) {
+        target_world = this.worlds[i];
+        min_count = target_world.count;
+      }
+    }
+
+    if (target_world == null) {
+      // The AI is victorious!
+      return true;
+    }
+
+    // Otherwise, attack.
+    // TODO: Refactor the common code here and in attack().
+    for (var i = this.worlds.length - 1; i >= 0; i--) {
+      var world = this.worlds[i];
+      if (world.owner == this.ai && world.count > 20 && world.count < 100) {
+        var attackers =
+            Math.ceil(world.count * this.ai.attack_ratio);
+        world.setCount(world.count - attackers);
+
+        var swarm = new Game.ShipSwarm(this.ai,
+                                       attackers,
+                                       world,
+                                       target_world);
+        this.ship_swarms.push(swarm);
+        this.renderer.addShipSwarm(swarm);
+      }
+    }
+  },
+
   update : function() {
     var now = new Date().getTime();
 
@@ -311,6 +353,11 @@ Game.State.prototype = {
     if (now - this.last_update > 500) {
       this.updateWorldCounts();
       this.last_update = now;
+    }
+
+    if (now - this.last_ai_update > AI_MOVE_INTERVAL_MS) {
+      this.makeAIMove();
+      this.last_ai_update = now;
     }
 
     this.updateShipSwarms(now);
