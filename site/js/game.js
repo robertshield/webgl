@@ -314,17 +314,27 @@ Game.State.prototype = {
     // Find a target world.
     var min_count = Number.MAX_VALUE;
     var target_world = null;
+    var ai_planet_count = 0, user_planet_count = 0;
     for (var i = this.worlds.length - 1; i >= 0; i--) {
-      if (this.worlds[i].count < min_count &&
-          this.worlds[i].owner != this.ai) {
-        target_world = this.worlds[i];
+      var world = this.worlds[i];
+      if (world.count < min_count &&
+          world.owner != this.ai) {
+        target_world = world;
         min_count = target_world.count;
+      }
+      if (world.owner == this.ai) {
+        ai_planet_count++;
+      } else if (world.owner == this.user) {
+        user_planet_count++;
       }
     }
 
-    if (target_world == null) {
+    if (ai_planet_count == 0) {
+      // The player is victorious!
+      return PLAYER_WINS;
+    } else if (user_planet_count == 0 || target_world == null) {
       // The AI is victorious!
-      return true;
+      return AI_WINS;
     }
 
     // Otherwise, attack.
@@ -344,6 +354,8 @@ Game.State.prototype = {
         this.renderer.addShipSwarm(swarm);
       }
     }
+
+    return GAME_CONTINUES;
   },
 
   update : function() {
@@ -355,12 +367,15 @@ Game.State.prototype = {
       this.last_update = now;
     }
 
+    var result = GAME_CONTINUES;
     if (now - this.last_ai_update > AI_MOVE_INTERVAL_MS) {
-      this.makeAIMove();
+      result = this.makeAIMove();
       this.last_ai_update = now;
     }
 
     this.updateShipSwarms(now);
+
+    return result;
   }
 };
 

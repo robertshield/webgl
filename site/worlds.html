@@ -167,14 +167,14 @@
     }
 
     function animLoop() {
-      var running, lastFrame = new Date();
+      var result = GAME_CONTINUES,
+          lastFrame = new Date();
 
       function loop( now ) {
-          // stop the loop if render returned false
-          if ( running !== false ) {
+          if ( result == GAME_CONTINUES ) {
             requestAnimationFrame(loop);
-            g_game_state.update();
-            running = g_game_renderer.render();
+            result = g_game_state.update();
+            g_game_renderer.render();
             stats.update();
             lastFrame = now;
           }

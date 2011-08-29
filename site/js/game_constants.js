@@ -17,3 +17,8 @@ var AI_MOVE_INTERVAL_MS = 2000; // How often the AI makes a move.
 
 var SHIP_SWARM_VELOCITY = 0.07;  // How many units ships move each update tick.
 var SHIP_SWARM_UPDATE_PERIOD = 100;  // How many ms between each tick.
+
+var PLAYER_WINS = -1;
+var AI_WINS = -2;
+var GAME_CONTINUES = -3;
+
