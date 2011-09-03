@@ -213,8 +213,12 @@ Game.Renderer.prototype.render = function() {
   var intersects = ray.intersectScene(this.scene);
   if (intersects.length > 0) {
     if (this.intersecting_world != intersects[0].object) {
-      this.intersecting_world = intersects[0].object;
-      this.intersecting_world.materials[0].color.setHex( HOVER_COLOUR );
+      var world = intersects[0].object.world;
+      if (world.owner == this.game_state.user ||
+          Object.keys(this.game_state.selected_worlds).length > 0) {
+        this.intersecting_world = intersects[0].object;
+        this.intersecting_world.materials[0].color.setHex( HOVER_COLOUR );
+      }
     }
   } else {
     if (this.intersecting_world) {
