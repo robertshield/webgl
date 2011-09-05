@@ -73,7 +73,7 @@ var Game = Game || {
 //----------------------------------------------------------------------------
 Game.Player = function(colour) {
   this.colour = colour;
-  this.attack_ratio = 0.5;
+  this.attack_ratio = INITIAL_USER_ATTACK_RATIO;
 };
 
 
@@ -238,6 +238,11 @@ Game.State.prototype = {
 
   setRenderer : function(renderer) {
     this.renderer = renderer;
+  },
+
+  // Call with a value from 0 to 100.
+  setUserAttackRatio : function(attack_ratio) {
+    this.user.attack_ratio = attack_ratio / 100;
   },
 
   updateWorldCounts : function() {

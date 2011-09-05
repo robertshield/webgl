@@ -89,8 +89,11 @@ var TrackingBoid = function(start_position, goal_position) {
     _acceleration.addSelf(this.alignment(boids));
     _acceleration.addSelf(this.cohesion(boids));
 
-    var separation_factor = (_shortest_dist_to_goal / _starting_dist_to_goal) * _max_separation_factor;
-    _acceleration.addSelf(this.separation(boids).multiplyScalar(separation_factor));
+    var separation_factor =
+        (_shortest_dist_to_goal / _starting_dist_to_goal) *
+        _max_separation_factor;
+    _acceleration.addSelf(
+        this.separation(boids).multiplyScalar(separation_factor));
   }
 
   this.move = function() {
@@ -151,7 +154,8 @@ var TrackingBoid = function(start_position, goal_position) {
   }
 
   this.cohesion = function(boids) {
-    var boid, distance, posSum = new THREE.Vector3(), steer = new THREE.Vector3(), count = 0;
+    var boid, distance, posSum = new THREE.Vector3(),
+        steer = new THREE.Vector3(), count = 0;
     for(var i = 0, il = boids.length; i < il; i++) {
       if(Math.random() > 0.6)
         continue;
@@ -174,7 +178,8 @@ var TrackingBoid = function(start_position, goal_position) {
   }
 
   this.separation = function(boids) {
-    var boid, distance, posSum = new THREE.Vector3(), repulse = new THREE.Vector3();
+    var boid, distance, posSum = new THREE.Vector3(),
+        repulse = new THREE.Vector3();
     for(var i = 0, il = boids.length; i < il; i++) {
       if(Math.random() > 0.6)
         continue;

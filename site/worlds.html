@@ -24,6 +24,30 @@
   <!-- CSS: implied media=all -->
   <!-- CSS concatenated and minified via ant build script-->
   <link rel="stylesheet" href="css/style.css">
+  <link type="text/css" href="css/dark-hive/jquery-ui-1.8.16.custom.css" rel="stylesheet"/>
+
+  <style>
+    html {
+      overflow: hidden;
+    }
+    div.bottomright{
+      display:block;
+
+      /*set the div in the bottom right corner*/
+      position:absolute;
+      bottom:0;
+      right:0;
+      width:240px;
+      text-align: center;
+
+      /*give it some background and border*/
+      background:#eee;
+      border:1px solid #ddd;
+      margin:4px;
+      padding:12px;
+    }
+  </style>
+
   <!-- end CSS-->
 
   <!-- More ideas for your <head> here: h5bp.com/d/head-Tips -->
@@ -32,23 +56,29 @@
        Modernizr enables HTML5 elements & feature detects; Respond is a polyfill for min/max-width CSS3 Media Queries
        For optimal performance, use a custom Modernizr build: www.modernizr.com/download/ -->
   <script src="js/libs/modernizr-2.0.6.min.js"></script>
+
 </head>
 <body>
-  
   <div id="container">
     <header>
-
     </header>
     <div id="main" role="main">
-
+    </div>
+    <div id="controls" class="bottomright">
+      <div id="amount">100</div>
+      <div id="slider"></div>
     </div>
     <footer>
-
     </footer>
   </div> <!--! end of #container -->
-  
-  <!-- JavaScript at the bottom for fast page loading -->
-  <script type="text/javascript">
+
+  <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if offline -->
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
+  <script>window.jQuery || document.write('<script src="js/libs/jquery-1.6.2.min.js"><\/script>')</script>
+  <script src="js/libs/jquery-ui-1.8.16.custom.min.js"></script>
+
+  <script>
+
     // Shims:
     // TODO: Put these in a script somewhere.
     if(!Object.keys) Object.keys = function(o) {
@@ -58,21 +88,13 @@
       for(p in o) if (Object.prototype.hasOwnProperty.call(o,p)) ret.push(p);
       return ret;
     };
-  </script>
 
-  <!-- Grab Google CDN's jQuery, with a protocol relative URL; fall back to local if offline -->
-  <script src="//ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js"></script>
-  <script>window.jQuery || document.write('<script src="js/libs/jquery-1.6.2.min.js"><\/script>')</script>
-    
+  </script>
 
   <script type="text/javascript" src="js/libs/ThreeDebug.js"></script>
 
   <script type="text/javascript" src="js/libs/RequestAnimationFrame.js"></script>
   <script type="text/javascript" src="js/libs/Stats.js"></script>
-  
-  <script type="text/javascript" src="js/fonts/helvetiker_bold.typeface.js"></script>
-  <script type="text/javascript" src="js/fonts/helvetiker_regular.typeface.js"></script>
-
 
   <!-- TODO: structure this better -->
   <script type="text/javascript" src="js/game_constants.js"></script>
@@ -135,9 +157,25 @@
       stats.domElement.style.top = '0px';
       $("#main")[0].appendChild(stats.domElement);
 
+      // Set up the UI
       document.addEventListener('mousemove', onDocumentMouseMove, false);
       document.addEventListener('click', onDocumentMouseClick, false);
-    }
+      // Set up the UI
+      $(function() {
+        $( "#slider" ).slider({
+              value:100 * INITIAL_USER_ATTACK_RATIO,
+              min: 25,
+              max: 100,
+              step: 25,
+              slide: function( event, ui ) {
+                $("#amount").html(ui.value);
+                g_game_state.setUserAttackRatio(ui.value);
+              }
+        });
+        $("#slider").width(230);
+        $("#amount").html($( "#slider" ).slider( "value"));
+      });
+      }
 
     function onDocumentMouseMove( event ) {
       event.preventDefault();
