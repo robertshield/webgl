@@ -71,9 +71,10 @@ var Game = Game || {
 
 // Player
 //----------------------------------------------------------------------------
-Game.Player = function(colour) {
+Game.Player = function(colour, is_ai) {
   this.colour = colour;
   this.attack_ratio = INITIAL_USER_ATTACK_RATIO;
+  this.is_ai = is_ai;
 };
 
 
@@ -211,17 +212,18 @@ Game.State = function(world_count, world_radius) {
   this.last_ai_update = new Date().getTime();
 
   this.worlds = [];
-  this.user = new Game.Player(USER_COLOUR);
-  this.ai = new Game.Player(AI_COLOUR);
+  this.user = new Game.Player(USER_COLOUR, false);
+  this.ai = new Game.Player(AI_COLOUR, true);
 
   this.selected_worlds = {};
   this.ship_swarms = [];
 
   this.renderer = null;
+  this.game_mode = GAME_MODE_NORMAL;
 };
 
 Game.State.prototype = {
-  reset : function(demo_mode) {
+  reset : function(game_mode) {
     this.state = Game.StateEnum.STARTING;
     this.worlds = Game.generateWorlds(this.world_count, this.world_radius);
     this.worlds[0].setOwner(this.user);
@@ -232,7 +234,12 @@ Game.State.prototype = {
     this.selected_worlds = {};
     this.ship_swarms = [];
 
-    // TODO: Implement demo mode.
+    this.game_mode = game_mode;
+    if (this.game_mode == GAME_MODE_DEMO) {
+      this.user.is_ai = true;
+    } else {
+      this.user.is_ai = false;
+    }
   },
 
   addWorld : function(world) {
@@ -326,29 +333,28 @@ Game.State.prototype = {
   },
 
   // Causes the AI to move. Returns true if the AI has won.
-  makeAIMove : function() {
+  makeAIMove : function(player) {
     // Find a target world.
     var min_count = Number.MAX_VALUE;
     var target_world = null;
-    var ai_planet_count = 0, user_planet_count = 0;
+    var player_planet_count = 0, opponent_planet_count = 0;
     for (var i = this.worlds.length - 1; i >= 0; i--) {
       var world = this.worlds[i];
-      if (world.count < min_count &&
-          world.owner != this.ai) {
+      if (world.count < min_count && world.owner != player) {
         target_world = world;
         min_count = target_world.count;
       }
-      if (world.owner == this.ai) {
-        ai_planet_count++;
-      } else if (world.owner == this.user) {
-        user_planet_count++;
+      if (world.owner == player) {
+        player_planet_count++;
+      } else if (world.owner != null) {
+        opponent_planet_count++;
       }
     }
 
-    if (ai_planet_count == 0) {
+    if (player_planet_count == 0) {
       // The player is victorious!
       return PLAYER_WINS;
-    } else if (user_planet_count == 0 || target_world == null) {
+    } else if (opponent_planet_count == 0 || target_world == null) {
       // The AI is victorious!
       return AI_WINS;
     }
@@ -357,12 +363,12 @@ Game.State.prototype = {
     // TODO: Refactor the common code here and in attack().
     for (var i = this.worlds.length - 1; i >= 0; i--) {
       var world = this.worlds[i];
-      if (world.owner == this.ai && world.count > 20 && world.count < 100) {
+      if (world.owner == player && world.count > 20 && world.count < 100) {
         var attackers =
-            Math.ceil(world.count * this.ai.attack_ratio);
+            Math.ceil(world.count * player.attack_ratio);
         world.setCount(world.count - attackers);
 
-        var swarm = new Game.ShipSwarm(this.ai,
+        var swarm = new Game.ShipSwarm(player,
                                        attackers,
                                        world,
                                        target_world);
@@ -389,7 +395,11 @@ Game.State.prototype = {
 
     var result = GAME_CONTINUES;
     if (now - this.last_ai_update > AI_MOVE_INTERVAL_MS) {
-      result = this.makeAIMove();
+      if (this.game_mode == GAME_MODE_DEMO) {
+        this.makeAIMove(this.user);
+      }
+
+      result = this.makeAIMove(this.ai);
       this.last_ai_update = now;
     }
 

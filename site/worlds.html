@@ -106,9 +106,8 @@
   <script type="text/javascript" src="js/renderer.js"></script>
 
   <script type="text/javascript">
-    var stats;
-    var dialog_visible = false;
-    var canvas_attached = false;
+    var g_stats;
+    var g_dialog_visible = false;
 
     var g_game_state = new Game.State(WORLD_COUNT, WORLD_RADIUS);
     var g_game_renderer = new Game.Renderer(g_game_state);
@@ -116,6 +115,7 @@
 
     // Set up and run.
     init();
+    startNewGame(GAME_MODE_DEMO);
 
     function addWorldLabels(screen_coordinates, worlds) {
       for (var i = screen_coordinates.length - 1; i >= 0; i--) {
@@ -140,14 +140,14 @@
       $(".world_label").detach();
     }
 
-    function startNewGame() {
+    function startNewGame(game_mode) {
       g_game_state.stop();
 
       // Clear any existing DOM labels.
       removeWorldLabels();
 
       // Reset the state and renderer objects.
-      g_game_state.reset(false);
+      g_game_state.reset(game_mode);
       g_game_renderer.reset(g_game_state);
 
       // Rebuild the worlds scene.
@@ -163,19 +163,21 @@
       $(".webgl_renderer").detach();
       $("#main")[0].appendChild(g_game_renderer.renderer.domElement);
 
-      // Show the in-game UI.
-      $("#controls").show();
-      $("#resume").show();
+      if (game_mode == GAME_MODE_NORMAL) {
+        // Show the in-game UI.
+        $("#controls").show();
+        $("#resume").show();
+      }
 
       g_game_state.start();
       animLoop();
     }
 
     function init() {
-      stats = new Stats();
-      stats.domElement.style.position = 'absolute';
-      stats.domElement.style.top = '0px';
-      $("#main")[0].appendChild(stats.domElement);
+      g_stats = new Stats();
+      g_stats.domElement.style.position = 'absolute';
+      g_stats.domElement.style.top = '0px';
+      $("#main")[0].appendChild(g_stats.domElement);
 
       // Set up event listeners
       $(document).mousemove(onDocumentMouseMove);
@@ -205,8 +207,8 @@
         $("#dialog").dialog({
             autoOpen: true,
             resizable: false,
-            open: function(event, ui) { dialog_visible = true; },
-            close: function(event, ui) { dialog_visible = false; }
+            open: function(event, ui) { g_dialog_visible = true; },
+            close: function(event, ui) { g_dialog_visible = false; }
         });
 
         // Hide the Resume button until there is an active game.
@@ -221,7 +223,8 @@
 
         $("#new_game").button();
         $("#new_game").click(function() { 
-          startNewGame();
+          g_game_state.stop();
+          startNewGame(GAME_MODE_NORMAL);
           $("#dialog").dialog("close"); 
         });
 
@@ -247,7 +250,7 @@
 
     function onDocumentKeyDown(event) {
       if (event.which == 27) {
-        if (!dialog_visible) {
+        if (!g_dialog_visible) {
           g_game_state.stop();
           $("#dialog").dialog("open");
         }
@@ -263,8 +266,17 @@
           requestAnimationFrame(loop);
           result = g_game_state.update();
           g_game_renderer.render();
-          stats.update();
+          g_stats.update();
           lastFrame = now;
+        } else if (result != GAME_PAUSED) {
+          if (g_game_state.game_mode == GAME_MODE_NORMAL) {
+            g_game_state.stop();
+            $("#resume").hide();
+            $("#dialog").dialog("open");
+          } else {
+            g_game_state.stop();
+            startNewGame(GAME_MODE_DEMO);
+          }
         }
       }
       loop(lastFrame);

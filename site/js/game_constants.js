@@ -25,3 +25,6 @@ var AI_WINS = -2;
 var GAME_CONTINUES = -3;
 var GAME_PAUSED = -4;
 
+var GAME_MODE_NORMAL = 1;
+var GAME_MODE_DEMO = 2;
+
