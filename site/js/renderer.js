@@ -4,11 +4,10 @@ Game.Renderer = function(game_state) {
   this.game_state = game_state;
 
   this.camera = null;
-  this.scene = new THREE.Scene();
-
   this.skybox_camera = null;
-  this.skybox_scene = new THREE.Scene();
 
+  this.scene = new THREE.Scene();
+  this.skybox_scene = new THREE.Scene();
   this.ships_scene = new THREE.Scene();
 
   this.projector = new THREE.Projector();
@@ -16,8 +15,26 @@ Game.Renderer = function(game_state) {
 
   this.mouse = { x: 0, y: 0 };
 
-  this.intersecting_world;
+  this.intersecting_world = null;
+  this.ship_swarms = [];
+}
 
+Game.Renderer.prototype.reset = function(game_state) {
+  this.game_state = game_state;
+
+  this.camera = null;
+  this.skybox_camera = null;
+
+  this.scene = new THREE.Scene();
+  this.skybox_scene = new THREE.Scene();
+  this.ships_scene = new THREE.Scene();
+
+  this.projector = new THREE.Projector();
+  this.renderer = null;
+
+  this.mouse = { x: 0, y: 0 };
+
+  this.intersecting_world = null;
   this.ship_swarms = [];
 }
 
@@ -93,6 +110,7 @@ Game.Renderer.prototype.initScene = function() {
   this.renderer.sortObjects = false;
   this.renderer.autoClear = false;
   this.renderer.domElement.style.zIndex = -1;
+  this.renderer.domElement.className = 'webgl_renderer';
   this.renderer.setSize( window.innerWidth, window.innerHeight );
 };
 

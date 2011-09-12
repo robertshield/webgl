@@ -221,7 +221,7 @@ Game.State = function(world_count, world_radius) {
 };
 
 Game.State.prototype = {
-  restart : function() {
+  reset : function(demo_mode) {
     this.state = Game.StateEnum.STARTING;
     this.worlds = Game.generateWorlds(this.world_count, this.world_radius);
     this.worlds[0].setOwner(this.user);
@@ -230,6 +230,9 @@ Game.State.prototype = {
     this.worlds[1].setCount(PLAYER_START_COUNT);
 
     this.selected_worlds = {};
+    this.ship_swarms = [];
+
+    // TODO: Implement demo mode.
   },
 
   addWorld : function(world) {
@@ -238,6 +241,14 @@ Game.State.prototype = {
 
   setRenderer : function(renderer) {
     this.renderer = renderer;
+  },
+
+  start : function() {
+    this.state = Game.StateEnum.RUNNING;
+  },
+
+  stop : function() {
+    this.state = Game.StateEnum.PAUSED;
   },
 
   // Call with a value from 0 to 100.
@@ -364,6 +375,10 @@ Game.State.prototype = {
   },
 
   update : function() {
+    if (this.state == Game.StateEnum.PAUSED) {
+      return GAME_PAUSED;
+    }
+
     var now = new Date().getTime();
 
     // Update the world counts.
@@ -381,7 +396,8 @@ Game.State.prototype = {
     this.updateShipSwarms(now);
 
     return result;
-  }
+  },
+
 };
 
 

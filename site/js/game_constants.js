@@ -23,4 +23,5 @@ var SHIP_SWARM_UPDATE_PERIOD = 100;  // How many ms between each tick.
 var PLAYER_WINS = -1;
 var AI_WINS = -2;
 var GAME_CONTINUES = -3;
+var GAME_PAUSED = -4;
 

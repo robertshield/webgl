@@ -32,16 +32,13 @@
     }
     div.bottomright{
       display:block;
-
-      /*set the div in the bottom right corner*/
       position:absolute;
       bottom:0;
       right:0;
       width:240px;
       text-align: center;
-
-      /*give it some background and border*/
-      background:#eee;
+      background:#FFFFFF;
+      border-radius:15px;
       border:1px solid #ddd;
       margin:4px;
       padding:12px;
@@ -67,6 +64,11 @@
     <div id="controls" class="bottomright">
       <div id="amount">100</div>
       <div id="slider"></div>
+    </div>
+    <div id="dialog" title="Worlds" style="text-align: center">
+      <button id="resume">Resume</button><br><br>
+      <button id="new_game">New Game</button><br><br>
+      <button id="options">Options</button>
     </div>
     <footer>
     </footer>
@@ -104,7 +106,9 @@
   <script type="text/javascript" src="js/renderer.js"></script>
 
   <script type="text/javascript">
-    var container, stats;
+    var stats;
+    var dialog_visible = false;
+    var canvas_attached = false;
 
     var g_game_state = new Game.State(WORLD_COUNT, WORLD_RADIUS);
     var g_game_renderer = new Game.Renderer(g_game_state);
@@ -112,28 +116,8 @@
 
     // Set up and run.
     init();
-    animLoop();
 
-    function init() {
-      var info = document.createElement( 'div' );
-      info.style.position = 'absolute';
-      info.style.top = '10px';
-      info.style.width = '100%';
-      info.style.textAlign = 'center';
-      info.style.zIndex = 100;
-      info.innerHTML = 'webgl - test';
-      $("#main")[0].appendChild( info );
-
-      g_game_state.restart();
-      var worlds = g_game_state.worlds;
-
-      g_game_renderer.initScene();
-      g_game_renderer.addWorlds(worlds, WORLD_RADIUS);
-
-      // Calculate the screen coordinates used for text overlays.
-      // TODO: if this works, remove the text geometry above.
-
-      var screen_coordinates = g_game_renderer.calcScreenCoordinates(worlds);
+    function addWorldLabels(screen_coordinates, worlds) {
       for (var i = screen_coordinates.length - 1; i >= 0; i--) {
         var label = document.createElement( 'div' );
         label.style.position = 'absolute';
@@ -144,38 +128,107 @@
         label.style.color = 'white';
         label.style.fontSize = '14pt';
         label.style.fontFamily = 'Arial';
+        label.className = 'world_label';
 
         label.innerHTML = worlds[i].count;
         worlds[i].attachLabel(label);
         $("#main")[0].appendChild(label);
       }
+    }
 
+    function removeWorldLabels() {
+      $(".world_label").detach();
+    }
+
+    function startNewGame() {
+      g_game_state.stop();
+
+      // Clear any existing DOM labels.
+      removeWorldLabels();
+
+      // Reset the state and renderer objects.
+      g_game_state.reset(false);
+      g_game_renderer.reset(g_game_state);
+
+      // Rebuild the worlds scene.
+      var worlds = g_game_state.worlds;
+      g_game_renderer.initScene();
+      g_game_renderer.addWorlds(worlds, WORLD_RADIUS);
+
+      // Rebuild the DOM labels.
+      var screen_coordinates = g_game_renderer.calcScreenCoordinates(worlds);
+      addWorldLabels(screen_coordinates, worlds);
+
+      // Remove any old renderer DOM elements and attach the new one.
+      $(".webgl_renderer").detach();
       $("#main")[0].appendChild(g_game_renderer.renderer.domElement);
 
+      // Show the in-game UI.
+      $("#controls").show();
+      $("#resume").show();
+
+      g_game_state.start();
+      animLoop();
+    }
+
+    function init() {
       stats = new Stats();
       stats.domElement.style.position = 'absolute';
       stats.domElement.style.top = '0px';
       $("#main")[0].appendChild(stats.domElement);
 
-      // Set up the UI
-      document.addEventListener('mousemove', onDocumentMouseMove, false);
-      document.addEventListener('click', onDocumentMouseClick, false);
+      // Set up event listeners
+      $(document).mousemove(onDocumentMouseMove);
+      $(document).click(onDocumentMouseClick);
+      $(document).keydown(onDocumentKeyDown);
+
       // Set up the UI
       $(function() {
-        $( "#slider" ).slider({
-              value:100 * INITIAL_USER_ATTACK_RATIO,
-              min: 25,
-              max: 100,
-              step: 25,
-              slide: function( event, ui ) {
-                $("#amount").html(ui.value);
-                g_game_state.setUserAttackRatio(ui.value);
-              }
+
+        // Hide the in-game UI at startup.
+        $("#controls").hide();
+
+        $("#slider").slider({
+            value:100 * INITIAL_USER_ATTACK_RATIO,
+            min: 25,
+            max: 100,
+            step: 25,
+            slide: function( event, ui ) {
+              $("#amount").html(ui.value);
+              g_game_state.setUserAttackRatio(ui.value);
+            }
         });
         $("#slider").width(230);
         $("#amount").html($( "#slider" ).slider( "value"));
+
+
+        $("#dialog").dialog({
+            autoOpen: true,
+            resizable: false,
+            open: function(event, ui) { dialog_visible = true; },
+            close: function(event, ui) { dialog_visible = false; }
+        });
+
+        // Hide the Resume button until there is an active game.
+        $("#resume").button();
+        $("#resume").click(function() {
+          g_game_state.start();
+          animLoop();
+          $("#dialog").dialog("close"); 
+        });
+
+        $("#resume").hide();
+
+        $("#new_game").button();
+        $("#new_game").click(function() { 
+          startNewGame();
+          $("#dialog").dialog("close"); 
+        });
+
+        $("#options").button();
+        
       });
-      }
+    }
 
     function onDocumentMouseMove( event ) {
       event.preventDefault();
@@ -192,21 +245,31 @@
       }
     }
 
+    function onDocumentKeyDown(event) {
+      if (event.which == 27) {
+        if (!dialog_visible) {
+          g_game_state.stop();
+          $("#dialog").dialog("open");
+        }
+      }
+    }
+
     function animLoop() {
       var result = GAME_CONTINUES,
           lastFrame = new Date();
 
-      function loop( now ) {
-          if ( result == GAME_CONTINUES ) {
-            requestAnimationFrame(loop);
-            result = g_game_state.update();
-            g_game_renderer.render();
-            stats.update();
-            lastFrame = now;
-          }
+      function loop(now) {
+        if (result == GAME_CONTINUES) {
+          requestAnimationFrame(loop);
+          result = g_game_state.update();
+          g_game_renderer.render();
+          stats.update();
+          lastFrame = now;
+        }
       }
       loop(lastFrame);
     }
+
   </script>
 
   <!-- JavaScript at the bottom for fast page loading -->
