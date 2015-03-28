@@ -137,7 +137,7 @@ var TrackingBoid = function(start_position, goal_position) {
       if(Math.random() > 0.6)
         continue;
       boid = boids[i];
-      distance = boid.position.distanceTo(this.position);
+      var distance = boid.position.distanceTo(this.position);
       if(distance > 0 && distance <= _neighborhoodRadius) {
         velSum.addSelf(boid.velocity);
         count++;
